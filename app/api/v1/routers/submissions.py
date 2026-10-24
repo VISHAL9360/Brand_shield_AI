@@ -42,7 +42,14 @@ from app.infrastructure.db.models import (
 from app.infrastructure.db.session import get_async_session
 from app.services.analysis.triage_orchestrator import TriageOrchestrator
 from app.services.audit_service import AuditService
-from app.services.ingestion.parser import OffsetPreservingASTParser, ParsedDocument
+from app.services.ingestion.parser import (
+    OffsetPreservingASTParser,
+    ParsedDocument,
+    compute_sha256_async,
+    parse_docx_async,
+    parse_pdf_async,
+    parse_text_async,
+)
 from app.services.ingestion.validator import UploadValidator
 from app.services.submission_service import SubmissionService
 
@@ -114,22 +121,16 @@ async def upload_document_asset(
             resource_id=str(brand_profile_id),
         )
 
-    file_bytes = await file.read()
-    raw_filename = file.filename or "upload"
+    # Streaming chunk validation (64KB loop with max-size abort in flight)
+    file_bytes, validated = await UploadValidator.validate_upload_stream(file)
 
-    # Multi-layer security validation
-    validated = UploadValidator.validate_file(
-        file_bytes=file_bytes,
-        filename=raw_filename,
-    )
-
-    # Route to specialized AST parser
+    # Route to non-blocking specialized AST parser (guarded by Semaphore(8))
     if validated.document_type == "PDF":
-        parsed = OffsetPreservingASTParser.parse_pdf(file_bytes)
+        parsed = await parse_pdf_async(file_bytes)
     elif validated.document_type == "DOCX":
-        parsed = OffsetPreservingASTParser.parse_docx(file_bytes)
+        parsed = await parse_docx_async(file_bytes)
     elif validated.document_type in ("TEXT", "MARKDOWN"):
-        parsed = OffsetPreservingASTParser.parse_text(
+        parsed = await parse_text_async(
             raw_input=file_bytes.decode("utf-8"),
             document_type=validated.document_type,
         )
@@ -175,7 +176,7 @@ async def _create_submission_and_genesis_revision(
     """
     Atomic helper to create Submission, DocumentRevision #1 (v1), and cryptographic audit entry.
     """
-    sha256_hash = hashlib.sha256(parsed.raw_text.encode("utf-8")).hexdigest()
+    sha256_hash = await compute_sha256_async(parsed.raw_text.encode("utf-8"))
 
     now = datetime.now(timezone.utc)
     sub_id = uuid.uuid4()

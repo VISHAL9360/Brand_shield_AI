@@ -6,6 +6,8 @@ bounding-box coordinates, page indices, and paragraph/table hierarchy.
 """
 
 from dataclasses import dataclass, field
+import asyncio
+import hashlib
 import io
 import logging
 import re
@@ -16,6 +18,9 @@ import zipfile
 import fitz  # PyMuPDF
 
 logger = logging.getLogger("brandshield.services.ingestion.parser")
+
+# Ingestion Semaphore limiting concurrent CPU-bound document parsing tasks to 8
+INGESTION_SEMAPHORE = asyncio.Semaphore(8)
 
 # Sentence splitting regex matching terminal punctuation followed by whitespace or quote
 SENTENCE_SPLIT_REGEX = re.compile(r"([^\.\?!]+[\.\?!]+(?:['\"\)\]\s]|\Z))", re.UNICODE)
@@ -533,3 +538,30 @@ class OffsetPreservingASTParser:
                     f"AST span offset alignment fault in node '{span.id}': "
                     f"expected '{span.text[:30]}...', got '{slice_text[:30]}...'"
                 )
+
+
+# ------------------------------------------------------------------------------
+# Non-blocking CPU offloading wrappers (asyncio.to_thread + backpressure semaphore)
+# ------------------------------------------------------------------------------
+
+async def parse_pdf_async(file_bytes: bytes) -> ParsedDocument:
+    """Non-blocking PDF parser executing fitz extraction in thread pool under Semaphore(8)."""
+    async with INGESTION_SEMAPHORE:
+        return await asyncio.to_thread(OffsetPreservingASTParser.parse_pdf, file_bytes)
+
+
+async def parse_docx_async(file_bytes: bytes) -> ParsedDocument:
+    """Non-blocking DOCX parser executing OpenXML extraction in thread pool under Semaphore(8)."""
+    async with INGESTION_SEMAPHORE:
+        return await asyncio.to_thread(OffsetPreservingASTParser.parse_docx, file_bytes)
+
+
+async def parse_text_async(raw_input: str, document_type: str = "TEXT") -> ParsedDocument:
+    """Non-blocking plain text parser executing AST tokenization in thread pool under Semaphore(8)."""
+    async with INGESTION_SEMAPHORE:
+        return await asyncio.to_thread(OffsetPreservingASTParser.parse_text, raw_input, document_type)
+
+
+async def compute_sha256_async(data: bytes) -> str:
+    """Non-blocking SHA-256 fingerprint computation offloaded to thread pool."""
+    return await asyncio.to_thread(lambda: hashlib.sha256(data).hexdigest())

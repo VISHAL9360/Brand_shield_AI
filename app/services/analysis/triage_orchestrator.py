@@ -7,6 +7,7 @@ Orchestrates the four core intelligence stages:
 4. Stage 4 - Confidence Triage Boundaries & 15% Stochastic Automation-Bias Safeguard.
 """
 
+import asyncio
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -109,23 +110,22 @@ class TriageOrchestrator:
             guidelines = list(g_res.scalars().all())
 
         # ----------------------------------------------------------------------
-        # Stage 1: Deterministic Rule Engine (O(N) Aho-Corasick & Readability)
+        # Stage 1 (L1 In-Memory Automaton) & Stage 2 (Temporal Fact Hybrid RAG)
+        # Executed concurrently via asyncio.gather for sub-millisecond triage
         # ----------------------------------------------------------------------
-        deterministic_hits = DeterministicRuleEngine.analyze_document(
+        stage1_task = asyncio.to_thread(
+            DeterministicRuleEngine.analyze_document,
             content_text=content_text,
             brand_profile=profile,
             guidelines=guidelines,
         )
-
-        # ----------------------------------------------------------------------
-        # Stage 2: Temporal Fact & Hybrid RAG Retrieval Engine
-        # ----------------------------------------------------------------------
-        temporal_hits = await TemporalFactEngine.evaluate_claims(
+        stage2_task = TemporalFactEngine.evaluate_claims(
             content_text=content_text,
             workspace_id=workspace_id,
             session=session,
             preloaded_facts=preloaded_facts,
         )
+        deterministic_hits, temporal_hits = await asyncio.gather(stage1_task, stage2_task)
 
         # ----------------------------------------------------------------------
         # Stage 3: Zero-Trust Privacy Gate & Circuit-Breaker LLM Router

@@ -5,7 +5,7 @@ single-pass multi-dimensional governance reporting (GROUP BY CUBE / CTEs),
 evidence traceability grounding audits, and automated labelled test set benchmarks.
 """
 
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 import uuid
 
 from fastapi import APIRouter, Depends, Query, status
@@ -24,6 +24,7 @@ from app.infrastructure.db.session import get_async_session
 from app.services.audit_service import AuditService
 from app.services.governance.evaluator import GovernanceEvaluator
 from app.services.governance.reporting_service import GovernanceReportService
+from app.services.governance.retention_reaper import RetentionReaperService
 from app.services.governance.traceability_service import TraceabilityAuditService
 
 router = APIRouter()
@@ -125,3 +126,29 @@ async def evaluate_labelled_testset(
         workspace_id=auditor.workspace_id,
         brand_profile_id=brand_profile_id,
     )
+
+
+@router.post(
+    "/enforce-retention",
+    status_code=status.HTTP_200_OK,
+    summary="Execute Limited-Retention TTL Policy Reaper",
+)
+async def enforce_data_retention(
+    auditor: AuthorizedAuditor,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    retention_days: Optional[int] = Query(None, description="Override TTL retention window in days"),
+    dry_run: bool = Query(False, description="Simulate purge without mutating records"),
+) -> dict[str, Any]:
+    """
+    Limited-Retention TTL Reaper:
+    Scans for submissions older than brand retention policy (e.g. 30 days).
+    Cryptographically shreds raw text while preserving finding counts and audit logs.
+    Records RETENTION_POLICY_PURGED events in the cryptographic ledger.
+    """
+    result = await RetentionReaperService.enforce_retention(
+        session=session,
+        workspace_id=auditor.workspace_id,
+        forced_retention_days=retention_days,
+        dry_run=dry_run,
+    )
+    return result.to_dict()

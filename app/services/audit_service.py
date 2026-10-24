@@ -4,6 +4,7 @@ Guarantees tamper-evident immutable audit trails for compliance disclosures and 
 Formula: current_hash = SHA-256(previous_hash + actor_id + action + canonical_json(payload) + timestamp)
 """
 
+import asyncio
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -20,6 +21,15 @@ from app.infrastructure.db.models import AuditLedger
 
 GENESIS_HASH = "0" * 64
 settings = get_settings()
+
+_audit_lock: Optional[asyncio.Lock] = None
+
+
+def get_audit_lock() -> asyncio.Lock:
+    global _audit_lock
+    if _audit_lock is None:
+        _audit_lock = asyncio.Lock()
+    return _audit_lock
 
 
 class AuditService:
@@ -71,41 +81,45 @@ class AuditService:
         Computes SHA-256(previous_hash + actor_id + action + canonical_json(payload) + timestamp)
         before committing the entry to the audit_ledger.
         """
-        action_str = action.value if hasattr(action, "value") else str(action)
+        async with get_audit_lock():
+            action_str = action.value if hasattr(action, "value") else str(action)
 
-        # Retrieve head hash from the ledger
-        query = (
-            select(AuditLedger.current_hash)
-            .order_by(AuditLedger.sequence_id.desc())
-            .limit(1)
-        )
-        result = await session.execute(query)
-        latest_hash = result.scalar_one_or_none()
-        previous_hash = latest_hash if latest_hash else GENESIS_HASH
+            # Retrieve head hash from the ledger for this tenant boundary
+            query = (
+                select(AuditLedger.current_hash)
+                .order_by(AuditLedger.sequence_id.desc())
+            )
+            if workspace_id is not None:
+                query = query.where(AuditLedger.workspace_id == workspace_id)
+            query = query.limit(1)
 
-        now = datetime.now(timezone.utc)
-        timestamp_str = now.isoformat()
+            result = await session.execute(query)
+            latest_hash = result.scalar_one_or_none()
+            previous_hash = latest_hash if latest_hash else GENESIS_HASH
 
-        current_hash = cls.compute_hash(
-            previous_hash=previous_hash,
-            actor_id=actor_id,
-            action=action_str,
-            payload=payload,
-            timestamp_str=timestamp_str,
-        )
+            now = datetime.now(timezone.utc)
+            timestamp_str = now.isoformat()
 
-        entry = AuditLedger(
-            workspace_id=workspace_id,
-            actor_id=actor_id,
-            action=action_str,
-            payload=payload,
-            previous_hash=previous_hash,
-            current_hash=current_hash,
-            timestamp=now,
-        )
-        session.add(entry)
-        await session.flush()
-        return entry
+            current_hash = cls.compute_hash(
+                previous_hash=previous_hash,
+                actor_id=actor_id,
+                action=action_str,
+                payload=payload,
+                timestamp_str=timestamp_str,
+            )
+
+            entry = AuditLedger(
+                workspace_id=workspace_id,
+                actor_id=actor_id,
+                action=action_str,
+                payload=payload,
+                previous_hash=previous_hash,
+                current_hash=current_hash,
+                timestamp=now,
+            )
+            session.add(entry)
+            await session.flush()
+            return entry
 
     @classmethod
     async def verify_chain_integrity(
@@ -146,7 +160,11 @@ class AuditService:
                 )
 
             # Recompute content hash: SHA-256(previous_hash + actor_id + action + canonical_json(payload) + timestamp)
-            timestamp_str = record.timestamp.isoformat()
+            ts = record.timestamp
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            timestamp_str = ts.isoformat()
+
             recomputed = cls.compute_hash(
                 previous_hash=record.previous_hash,
                 actor_id=record.actor_id,

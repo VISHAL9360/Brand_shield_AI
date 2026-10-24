@@ -18,6 +18,7 @@ from app.api.v1.routers import (
     brands,
     governance,
     submissions,
+    system,
     workflow,
 )
 
@@ -25,6 +26,7 @@ api_router = APIRouter()
 
 # Core Infrastructure & Probes
 api_router.include_router(health.router, tags=["Health & Probes"])
+api_router.include_router(system.router, prefix="/system", tags=["System Diagnostics & Introspection"])
 
 # Security & Authentication
 api_router.include_router(auth.router, prefix="/auth", tags=["Authentication & Session"])

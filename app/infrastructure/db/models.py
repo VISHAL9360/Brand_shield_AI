@@ -616,6 +616,13 @@ class Submission(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=True,
         doc="Pointer to tip revision in the immutable DAG."
     )
+    version_number: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=1,
+        server_default=text("1"),
+        doc="Optimistic concurrency control version counter."
+    )
 
     # Indexes
     __table_args__ = (

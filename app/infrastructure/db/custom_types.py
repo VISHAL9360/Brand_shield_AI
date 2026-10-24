@@ -13,7 +13,28 @@ import re
 from typing import Any, Optional
 
 from sqlalchemy import JSON, Text, TypeDecorator
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID as PG_UUID
 from sqlalchemy.engine.interfaces import Dialect
+from sqlalchemy.ext.compiler import compiles
+
+
+# ==============================================================================
+# Dual-Dialect DDL Compilers (Compiles PostgreSQL native types on SQLite)
+# ==============================================================================
+
+@compiles(JSONB, "sqlite")
+def compile_jsonb_sqlite(type_, compiler, **kw):
+    return "JSON"
+
+
+@compiles(TSVECTOR, "sqlite")
+def compile_tsvector_sqlite(type_, compiler, **kw):
+    return "TEXT"
+
+
+@compiles(PG_UUID, "sqlite")
+def compile_pg_uuid_sqlite(type_, compiler, **kw):
+    return "CHAR(36)"
 
 
 class PortableVector(TypeDecorator):

@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
+from app.core.idempotency import IdempotencyMiddleware
 from app.core.telemetry import TelemetryMiddleware, setup_telemetry_logging
 from app.infrastructure.db.session import (
     close_db_connection,
@@ -66,6 +67,9 @@ app = FastAPI(
 # Enterprise Observability & Correlation ID Middleware
 app.add_middleware(TelemetryMiddleware)
 
+# Stripe-Style Idempotency Replay Middleware
+app.add_middleware(IdempotencyMiddleware)
+
 # Cross-Origin Resource Sharing (CORS) - Strict configuration for React + Tailwind CSS frontend
 app.add_middleware(
     CORSMiddleware,
@@ -78,6 +82,7 @@ app.add_middleware(
         "Content-Type",
         "Accept",
         "X-Correlation-ID",
+        "Idempotency-Key",
         "Origin",
         "X-Requested-With",
         "Access-Control-Request-Method",
@@ -86,6 +91,7 @@ app.add_middleware(
     expose_headers=[
         "X-Correlation-ID",
         "X-Process-Time-Ms",
+        "X-Cache-Idempotency",
         "Content-Range",
         "Link",
     ],

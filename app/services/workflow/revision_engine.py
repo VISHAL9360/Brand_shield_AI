@@ -53,6 +53,18 @@ class RevisionEngine:
                 resource_id=str(submission_id),
             )
 
+        if payload.expected_version is not None:
+            curr_ver = getattr(submission, "version_number", 1)
+            if curr_ver != payload.expected_version:
+                raise ConflictProblem(
+                    detail=(
+                        f"Optimistic Concurrency Conflict: Expected document version {payload.expected_version}, "
+                        f"but active database version is {curr_ver}. Concurrent edit detected."
+                    ),
+                    conflicting_field="version_number",
+                    conflicting_value=str(curr_ver),
+                )
+
         if submission.workflow_state == WorkflowState.APPROVED:
             raise ConflictProblem(
                 detail="Submission has already received final compliance approval. Content is locked from modification.",
@@ -173,8 +185,10 @@ class RevisionEngine:
         session.add(new_revision)
         await session.flush()
 
-        # Update submission head pointer and lifecycle state
+        # Update submission head pointer, version counter, and lifecycle state
         submission.current_revision_id = new_revision.id
+        if hasattr(submission, "version_number"):
+            submission.version_number = (submission.version_number or 1) + 1
         if submission.workflow_state in {WorkflowState.TRIAGED, WorkflowState.CHANGES_REQUESTED}:
             SubmissionStateMachine.transition(
                 submission=submission,

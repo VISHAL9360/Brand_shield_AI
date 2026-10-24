@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import io
 import os
 import re
+from typing import Any, Optional
 import zipfile
 
 from app.core.exceptions import ValidationErrorProblem
@@ -247,11 +248,47 @@ class UploadValidator:
 
                 return "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "DOCX"
 
-        except zipfile.BadZipFile as exc:
+        except (zipfile.BadZipFile, RuntimeError) as exc:
             raise ValidationErrorProblem(
-                detail=f"Malformed or corrupted DOCX archive in '{filename}': {str(exc)}",
-                extensions={"violation": "BAD_ZIP_FILE"},
+                detail=f"Malformed or encrypted DOCX archive in '{filename}': {str(exc)}",
+                extensions={"violation": "BAD_OR_ENCRYPTED_ZIP_FILE"},
             ) from exc
+
+    @classmethod
+    async def validate_upload_stream(
+        cls,
+        upload_file: Any,
+        max_size_bytes: int = DEFAULT_MAX_FILE_SIZE_BYTES,
+    ) -> tuple[bytes, ValidatedUpload]:
+        """
+        Streams file in 64KB chunks (read(65536) loop), aborting in-flight if max_size_bytes
+        is exceeded before buffering into memory, then performs magic-byte and security scan.
+        """
+        chunks = []
+        total_size = 0
+        chunk_size = 65536  # 64 KB
+
+        while True:
+            chunk = await upload_file.read(chunk_size)
+            if not chunk:
+                break
+            total_size += len(chunk)
+            if total_size > max_size_bytes:
+                max_mb = max_size_bytes / (1024 * 1024)
+                actual_mb = round(total_size / (1024 * 1024), 2)
+                raise ValidationErrorProblem(
+                    detail=f"Streaming upload aborted: File size exceeds maximum limit of {max_mb} MB (received > {actual_mb} MB).",
+                    extensions={"max_size_bytes": max_size_bytes, "received_bytes": total_size},
+                )
+            chunks.append(chunk)
+
+        file_bytes = b"".join(chunks)
+        validated = cls.validate_file(
+            file_bytes=file_bytes,
+            filename=upload_file.filename or "upload",
+            max_size_bytes=max_size_bytes,
+        )
+        return file_bytes, validated
 
     @classmethod
     def _verify_plaintext(cls, file_bytes: bytes, filename: str) -> tuple[str, str]:

@@ -58,8 +58,14 @@ class SubmissionRead(SubmissionBase):
     assigned_reviewer_id: Optional[uuid.UUID]
     workflow_state: WorkflowState
     current_revision_id: Optional[uuid.UUID]
+    version_number: Optional[int] = 1
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+    @field_validator("version_number", mode="before")
+    @classmethod
+    def default_version_number(cls, v: Any) -> int:
+        return 1 if v is None else int(v)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -92,6 +98,7 @@ class FindingResolutionRequest(BaseModel):
     action: CreatorAction = Field(..., description="Resolution action: ACCEPT, REJECT, or EDIT")
     edited_text: Optional[str] = Field(None, description="Custom replacement text if action is EDIT")
     comment: Optional[str] = Field(None, description="Optional rationale or justification from author")
+    expected_version: Optional[int] = Field(None, description="Expected submission version_number for optimistic concurrency control")
 
     @field_validator("action", mode="before")
     @classmethod
