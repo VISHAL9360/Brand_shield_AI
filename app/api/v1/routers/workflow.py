@@ -67,6 +67,47 @@ async def resolve_finding_suggestion(
 
 
 @router.post(
+    "/findings/{finding_id}/resolve",
+    response_model=FindingResolutionResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Creator Suggestion Resolution by Finding ID",
+)
+async def resolve_finding_by_id(
+    finding_id: uuid.UUID,
+    payload: FindingResolutionRequest,
+    creator: AuthorizedCreator,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> FindingResolutionResponse:
+    """
+    Convenience endpoint allowing frontend to resolve a finding directly by finding_id.
+    """
+    from app.core.exceptions import NotFoundProblem
+    from app.infrastructure.db.models import DocumentRevision, Finding
+
+    finding = await session.get(Finding, finding_id)
+    if not finding:
+        raise NotFoundProblem(
+            detail=f"Finding '{finding_id}' not found.",
+            resource_type="Finding",
+            resource_id=str(finding_id),
+        )
+    revision = await session.get(DocumentRevision, finding.revision_id)
+    if not revision:
+        raise NotFoundProblem(
+            detail=f"Revision for finding '{finding_id}' not found.",
+            resource_type="DocumentRevision",
+            resource_id=str(finding.revision_id),
+        )
+    return await RevisionEngine.resolve_finding(
+        session=session,
+        submission_id=revision.submission_id,
+        finding_id=finding_id,
+        actor=creator,
+        payload=payload,
+    )
+
+
+@router.post(
     "/{submission_id}/submit-for-review",
     response_model=SubmissionRead,
     status_code=status.HTTP_200_OK,

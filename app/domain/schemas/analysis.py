@@ -40,6 +40,7 @@ class AnalysisPipelineResultResponse(BaseModel):
     stale_facts_to_reverify: int
     needs_verification_missing_evidence: int
     automation_bias_audits_injected: int
+    suppressed_false_positives_count: int = 0
     processing_duration_ms: float
     findings: list[FindingRead] = Field(default_factory=list)
 
@@ -73,6 +74,45 @@ class AdHocAnalysisResponse(BaseModel):
     total_findings: int
     processing_duration_ms: float
     findings: list[AdHocFinding] = Field(default_factory=list)
+
+
+class InlinePreflightRequest(BaseModel):
+    """Stateless payload for sub-10ms inline typing preflight co-pilot."""
+    brand_profile_id: uuid.UUID = Field(..., description="Target brand profile defining terminology & rules")
+    text_snippet: str = Field(..., min_length=1, description="Single sentence or paragraph typed in real time")
+    cursor_offset: Optional[int] = Field(default=None, description="Current cursor offset within snippet")
+
+
+class InlineSpanHighlight(BaseModel):
+    """Real-time token span highlight for interactive inline editor."""
+    start_offset: int
+    end_offset: int
+    matched_term: str
+    issue_category: FindingCategory
+    severity: SeverityLevel
+    explanation_reason: str
+    suggested_replacement: Optional[str] = None
+    confidence_score: float = 1.0
+    epistemic_uncertainty_score: Optional[float] = None
+    counterfactual_risk_summary: Optional[str] = None
+
+    # Front-end parity aliases
+    start_char: Optional[int] = None
+    end_char: Optional[int] = None
+    flagged_text: Optional[str] = None
+    suggested_correction: Optional[str] = None
+
+
+class InlinePreflightResponse(BaseModel):
+    """Sub-10ms synchronous response for live-typing inline co-pilot."""
+    latency_ms: float
+    clean_pass: bool
+    character_count: int
+    span_highlights: list[InlineSpanHighlight] = Field(default_factory=list)
+    suggested_replacements_count: int = 0
+    is_compliant: bool = True
+    total_spans_detected: int = 0
+    spans: list[InlineSpanHighlight] = Field(default_factory=list)
 
 
 class AnalysisEngineStatusResponse(BaseModel):

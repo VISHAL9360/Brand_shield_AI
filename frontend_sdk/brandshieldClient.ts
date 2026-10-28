@@ -1,11 +1,14 @@
+// Synchronised with OpenAPI 0.1.0
 /**
  * BrandShield AI - Zero-Dependency Enterprise TypeScript SDK
  * Engineered for React 18+, Next.js 14+, Vite, and vanilla TypeScript frontends.
  * Features strict types matching Pydantic v2 backend schemas, typed fetch wrappers,
- * Server-Sent Events (SSE) analysis streaming, and Recharts-ready analytics hooks.
+ * built-in 1-click role switcher, Server-Sent Events (SSE) streaming,
+ * and zero-transformation Recharts-ready analytics datasets.
  */
 
 export type UserRole = "CREATOR" | "REVIEWER" | "ADMINISTRATOR";
+
 export type WorkflowState =
   | "SUBMITTED"
   | "ANALYZING"
@@ -41,11 +44,28 @@ export type ReviewSignOff = "APPROVED" | "CHANGES_REQUESTED";
 
 export interface TokenResponse {
   access_token: string;
+  refresh_token?: string;
   token_type: string;
-  expires_in_seconds?: number;
+  expires_in?: number;
+  user: User;
+}
+
+export interface DemoRoleAuthBundle {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
   role: UserRole;
-  user_id: string;
-  workspace_id: string;
+  user: User;
+}
+
+export interface DemoTokensResponse {
+  creator: DemoRoleAuthBundle;
+  reviewer: DemoRoleAuthBundle;
+  administrator: DemoRoleAuthBundle;
+  CREATOR?: DemoRoleAuthBundle;
+  REVIEWER?: DemoRoleAuthBundle;
+  ADMINISTRATOR?: DemoRoleAuthBundle;
+  [key: string]: any;
 }
 
 export interface User {
@@ -55,7 +75,7 @@ export interface User {
   role: UserRole;
   workspace_id: string;
   is_active: boolean;
-  created_at: string;
+  created_at?: string;
 }
 
 export interface BrandProfile {
@@ -89,6 +109,42 @@ export interface BrandProfile {
   };
   is_active: boolean;
   created_at: string;
+}
+
+export interface BrandGuideline {
+  id: string;
+  brand_profile_id: string;
+  clause_identifier: string;
+  clause_text: string;
+  category: FindingCategory;
+  severity: SeverityLevel;
+  embedding?: number[];
+  created_at?: string;
+}
+
+export interface ApprovedFact {
+  id: string;
+  workspace_id: string;
+  brand_profile_id: string;
+  fact_statement: string;
+  original_source_url: string;
+  evidence_excerpt?: string;
+  verification_date: string;
+  expiry_date: string;
+  responsible_owner_id: string;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface CreateApprovedFactRequest {
+  brand_profile_id: string;
+  fact_statement: string;
+  original_source_url: string;
+  evidence_excerpt?: string;
+  verification_date: string;
+  expiry_date: string;
+  responsible_owner_id?: string;
+  workspace_id?: string;
 }
 
 export interface ASTSpanNode {
@@ -131,6 +187,8 @@ export interface Finding {
   linked_fact_id?: string | null;
   is_automation_bias_audit: boolean;
   creator_action?: string | null;
+  epistemic_uncertainty_score?: number | null;
+  counterfactual_risk_summary?: string | null;
   created_at: string;
 }
 
@@ -159,11 +217,48 @@ export interface ReviewDecision {
   created_at: string;
 }
 
-// Recharts Pre-Formatted Governance Data
+export interface InstantAnalysisResponse {
+  submission: Submission;
+  findings: Finding[];
+  triage_summary: {
+    total_findings: number;
+    flagged_high_confidence: number;
+    routed_to_human_low_confidence: number;
+    stale_facts_to_reverify: number;
+    needs_verification_missing_evidence: number;
+    automation_bias_audits_injected: number;
+    suppressed_false_positives_count: number;
+    processing_duration_ms: number;
+  };
+}
+
+export interface RevisionDiffResponse {
+  submission_id: string;
+  from_revision_number: number;
+  to_revision_number: number;
+  from_revision_id: string;
+  to_revision_id: string;
+  total_additions: number;
+  total_deletions: number;
+  unified_diff: string;
+  token_diffs: Array<{
+    operation: "EQUAL" | "INSERT" | "DELETE";
+    text: string;
+    start_char?: number;
+    end_char?: number;
+  }>;
+}
+
+// =============================================================================
+// Recharts-Ready Pre-Formatted Datasets
+// =============================================================================
+
 export interface RechartsCategoryBar {
   category: string;
   name: string;
   count: number;
+  value: number;
+  fill: string;
   CRITICAL: number;
   HIGH: number;
   MEDIUM: number;
@@ -172,17 +267,38 @@ export interface RechartsCategoryBar {
 
 export interface RechartsReviewTrendLine {
   date: string;
+  name?: string;
+  value?: number;
+  count?: number;
   approved: number;
   changes_requested: number;
   total_reviews: number;
+  fill?: string;
 }
 
 export interface RechartsTriagePie {
   name: string;
   value: number;
+  count?: number;
   fill: string;
   key?: string;
   percentage: number;
+}
+
+export interface RechartsSeverityBar {
+  name: string;
+  value: number;
+  count: number;
+  fill: string;
+  severity: string;
+}
+
+export interface RechartsSummaryKPI {
+  name: string;
+  value: string | number;
+  count: number;
+  fill: string;
+  description?: string;
 }
 
 export interface GovernanceReportResponse {
@@ -193,6 +309,15 @@ export interface GovernanceReportResponse {
   severity_counts: Record<string, number>;
   triage_status_counts: Record<string, number>;
   detector_source_counts: Record<string, number>;
+  creator_action_counts?: Record<string, number>;
+  category_severity_cube?: any[];
+  // Zero-transformation Recharts arrays for direct binding
+  category_chart_data: RechartsCategoryBar[];
+  triage_pie_data: RechartsTriagePie[];
+  severity_breakdown: RechartsSeverityBar[];
+  review_trend_series: RechartsReviewTrendLine[];
+  summary_kpis: RechartsSummaryKPI[];
+  // Backward compatibility
   recharts_category_bar: RechartsCategoryBar[];
   recharts_review_trends_line: RechartsReviewTrendLine[];
   recharts_triage_pie: RechartsTriagePie[];
@@ -235,28 +360,214 @@ export interface EvaluationBenchmarkResponse {
   evaluated_at: string;
 }
 
+// Cryptographic Publication Attestation & Preflight Schemas
+export interface PublicationAttestationCertificateRead {
+  id: string;
+  certificate_id: string;
+  submission_id: string;
+  approved_revision_id: string;
+  document_sha256_hash: string;
+  reviewer_id: string;
+  brand_profile_id: string;
+  merkle_root_of_cited_facts_and_guidelines: string;
+  active_cited_fact_ids: string[];
+  earliest_fact_expiry: string | null;
+  issued_at: string;
+  valid_until: string;
+  cryptographic_signature: string;
+  revocation_reason: string | null;
+  revoked_at: string | null;
+}
+
+export interface AttestationVerifyRequest {
+  certificate_id: string;
+  document_content?: string | null;
+  document_sha256_hash?: string | null;
+}
+
+export interface AttestationVerifyResponse {
+  is_valid: boolean;
+  verification_code: string;
+  certificate_id: string;
+  submission_id: string | null;
+  verified_at: string;
+  details: Record<string, unknown>;
+}
+
+export interface InlineSpanHighlight {
+  start_char: number;
+  end_char: number;
+  flagged_text: string;
+  issue_category: FindingCategory;
+  severity: SeverityLevel;
+  explanation_reason: string;
+  suggested_correction: string | null;
+  epistemic_uncertainty_score: number;
+  counterfactual_risk_summary: string;
+}
+
+export interface InlinePreflightRequest {
+  brand_profile_id: string;
+  text_snippet: string;
+}
+
+export interface InlinePreflightResponse {
+  brand_profile_id: string;
+  is_compliant: boolean;
+  total_spans_detected: number;
+  spans: InlineSpanHighlight[];
+  processing_duration_ms: number;
+}
+
+export interface CharacterSpanCitation {
+  submission_id: string;
+  submission_title: string;
+  revision_id: string;
+  revision_number: number;
+  finding_id: string;
+  start_offset: number;
+  end_offset: number;
+  citation_hash: string;
+}
+
+export interface BlastRadiusTriggerResponse {
+  fact_id: string;
+  fact_statement: string;
+  expiry_date?: string | null;
+  trigger_reason: string;
+  brand_profile_id?: string | null;
+  affected_submissions_count: number;
+  affected_pages: number;
+  affected_citations_count: number;
+  exact_character_spans: CharacterSpanCitation[];
+  outbox_event_id?: string | null;
+  outbox_delivery_status: string;
+  timestamp: string;
+}
+
+export interface EnterpriseBlastRadiusOverview {
+  workspace_id: string;
+  brand_profile_id?: string | null;
+  total_citation_edges: number;
+  total_stale_facts: number;
+  total_affected_approved_submissions: number;
+  total_outbox_events_pending: number;
+  total_outbox_events_delivered: number;
+  total_outbox_events_dlq: number;
+  recent_events: Record<string, unknown>[];
+}
+
+export interface OutboxFlushResponse {
+  processed_count: number;
+  delivered_count: number;
+  failed_retrying_count: number;
+  dlq_count: number;
+  duration_ms: number;
+}
+
+// =============================================================================
+// Default Environment Base URL
+// =============================================================================
+
+const DEFAULT_API_BASE_URL: string =
+  (typeof import.meta !== "undefined" &&
+    (import.meta as any).env &&
+    (import.meta as any).env.VITE_API_BASE_URL) ||
+  (typeof process !== "undefined" &&
+    process.env &&
+    (process.env.VITE_API_BASE_URL || process.env.REACT_APP_API_BASE_URL)) ||
+  "http://localhost:8000/api/v1";
+
 // =============================================================================
 // Typed BrandShield AI Client
 // =============================================================================
 
 export class BrandShieldClient {
   private baseUrl: string;
-  private token: string | null;
+  private token: string | null = null;
+  private activeDemoRole: UserRole | null = null;
+  private cachedDemoTokens: DemoTokensResponse | null = null;
 
-  constructor(baseUrl: string = "http://localhost:8000", token?: string) {
-    this.baseUrl = baseUrl.replace(/\/+$/, "");
+  constructor(baseUrl?: string, token?: string) {
+    const raw = baseUrl || DEFAULT_API_BASE_URL;
+    // Strip trailing slash and normalize /api/v1
+    this.baseUrl = raw.replace(/\/+$/, "").replace(/\/api\/v1$/, "");
     this.token = token || null;
   }
 
-  public setToken(token: string): void {
+  // ---------------------------------------------------------------------------
+  // Authentication & 1-Click Role Switcher
+  // ---------------------------------------------------------------------------
+
+  public setToken(token: string | null): void {
     this.token = token;
   }
+
+  public getToken(): string | null {
+    return this.token;
+  }
+
+  public setActiveDemoRole(role: UserRole | null): void {
+    this.activeDemoRole = role;
+  }
+
+  public getActiveDemoRole(): UserRole | null {
+    return this.activeDemoRole;
+  }
+
+  /**
+   * Fetches pre-signed demo tokens and profiles for CREATOR, REVIEWER, and ADMINISTRATOR.
+   */
+  public async fetchDemoTokens(): Promise<DemoTokensResponse> {
+    const tokens = await this.request<DemoTokensResponse>("/api/v1/auth/demo-tokens");
+    this.cachedDemoTokens = tokens;
+    return tokens;
+  }
+
+  /**
+   * 1-Click Role Switcher: switches active demo role, updates JWT bearer token, and returns user profile.
+   */
+  public async switchRole(role: UserRole): Promise<User> {
+    this.setActiveDemoRole(role);
+    if (!this.cachedDemoTokens) {
+      await this.fetchDemoTokens();
+    }
+    const roleKey = role.toLowerCase() as "creator" | "reviewer" | "administrator";
+    const bundle = this.cachedDemoTokens?.[roleKey] || (this.cachedDemoTokens as any)?.[role];
+    if (bundle && bundle.access_token) {
+      this.setToken(bundle.access_token);
+      return bundle.user;
+    }
+    return this.getCurrentUser();
+  }
+
+  public async login(email: string, password: string): Promise<TokenResponse> {
+    const res = await this.request<TokenResponse>("/api/v1/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    this.setToken(res.access_token);
+    return res;
+  }
+
+  public async getCurrentUser(): Promise<User> {
+    return this.request<User>("/api/v1/auth/me");
+  }
+
+  // ---------------------------------------------------------------------------
+  // Core HTTP Request Wrapper
+  // ---------------------------------------------------------------------------
 
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
+    const cleanPath = endpoint.startsWith("/api/v1")
+      ? endpoint
+      : `/api/v1${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+    const url = `${this.baseUrl}${cleanPath}`;
+
     const headers: Record<string, string> = {
       Accept: "application/json",
       ...(options.headers as Record<string, string>),
@@ -264,6 +575,10 @@ export class BrandShieldClient {
 
     if (this.token && !headers["Authorization"]) {
       headers["Authorization"] = `Bearer ${this.token}`;
+    }
+
+    if (this.activeDemoRole && !headers["X-Demo-Role"]) {
+      headers["X-Demo-Role"] = this.activeDemoRole;
     }
 
     const response = await fetch(url, { ...options, headers });
@@ -277,6 +592,7 @@ export class BrandShieldClient {
       throw new Error(
         problemDetail?.detail ||
           problemDetail?.title ||
+          problemDetail?.message ||
           `API Request failed with status ${response.status}: ${response.statusText}`
       );
     }
@@ -285,67 +601,129 @@ export class BrandShieldClient {
   }
 
   // ---------------------------------------------------------------------------
-  // 1. Authentication
+  // Screen 1: Brand Setup & Knowledge Grounding
   // ---------------------------------------------------------------------------
-  public async login(email: string, password: string): Promise<TokenResponse> {
-    const formData = new URLSearchParams();
-    formData.append("username", email);
-    formData.append("password", password);
 
-    const res = await this.request<TokenResponse>("/api/v1/auth/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: formData.toString(),
-    });
-    this.setToken(res.access_token);
-    return res;
+  /**
+   * Resolves the primary active brand profile in the workspace.
+   */
+  public async getPrimaryBrandProfile(): Promise<BrandProfile> {
+    const profiles = await this.request<BrandProfile[]>("/api/v1/brands/");
+    if (!profiles || profiles.length === 0) {
+      throw new Error("No active Brand Profile configured in workspace.");
+    }
+    return profiles[0];
   }
 
-  public async getCurrentUser(): Promise<User> {
-    return this.request<User>("/api/v1/auth/me");
-  }
-
-  // ---------------------------------------------------------------------------
-  // 2. Brand Setup
-  // ---------------------------------------------------------------------------
   public async getBrandProfile(profileId: string): Promise<BrandProfile> {
     return this.request<BrandProfile>(`/api/v1/brands/${profileId}`);
   }
 
+  public async listBrandProfiles(): Promise<BrandProfile[]> {
+    return this.request<BrandProfile[]>("/api/v1/brands/");
+  }
+
+  public async getGuidelines(brandProfileId?: string): Promise<BrandGuideline[]> {
+    if (brandProfileId) {
+      return this.request<BrandGuideline[]>(`/api/v1/brands/${brandProfileId}/guidelines`);
+    }
+    const profile = await this.getPrimaryBrandProfile();
+    return this.request<BrandGuideline[]>(`/api/v1/brands/${profile.id}/guidelines`);
+  }
+
+  public async getApprovedFacts(brandProfileId?: string): Promise<ApprovedFact[]> {
+    const q = brandProfileId ? `?brand_profile_id=${brandProfileId}` : "";
+    return this.request<ApprovedFact[]>(`/api/v1/facts/${q}`);
+  }
+
+  public async createApprovedFact(fact: CreateApprovedFactRequest): Promise<ApprovedFact> {
+    return this.request<ApprovedFact>("/api/v1/facts/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(fact),
+    });
+  }
+
   // ---------------------------------------------------------------------------
-  // 3. Submissions & Document Ingestion
+  // Screen 2: Multi-Modal Ingestion
   // ---------------------------------------------------------------------------
+
+  /**
+   * Ingests raw text or Markdown into the Git-like revision DAG.
+   */
   public async submitText(
     title: string,
-    brandProfileId: string,
-    content: string
+    content: string,
+    brandProfileId?: string
   ): Promise<Submission> {
-    return this.request<Submission>("/api/v1/submissions/text", {
+    return this.request<Submission>("/api/v1/submissions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title,
+        content_text: content,
         brand_profile_id: brandProfileId,
-        content,
         document_type: "TEXT",
       }),
     });
   }
 
-  public async uploadDocument(
-    title: string,
-    brandProfileId: string,
+  /**
+   * Uploads and verifies document binary assets (PDF, DOCX, TXT, MD).
+   */
+  public async submitDocumentFile(
     file: Blob | File,
-    filename: string
+    title?: string,
+    brandProfileId?: string,
+    filename?: string
   ): Promise<Submission> {
     const formData = new FormData();
-    formData.append("title", title);
-    formData.append("brand_profile_id", brandProfileId);
-    formData.append("file", file, filename);
+    const resolvedName =
+      filename || (file instanceof File ? file.name : "uploaded_document.pdf");
+    formData.append("file", file, resolvedName);
+    if (title) formData.append("title", title);
+    if (brandProfileId) formData.append("brand_profile_id", brandProfileId);
 
-    return this.request<Submission>("/api/v1/submissions/upload", {
+    return this.request<Submission>("/api/v1/submissions", {
       method: "POST",
       body: formData,
+    });
+  }
+
+  /**
+   * 1-Step Convenience Endpoint: Ingests text or file, runs 4-stage pipeline,
+   * and returns submission + findings + triage summary in a single HTTP round-trip!
+   */
+  public async submitAndAnalyzeInstant(options: {
+    text?: string;
+    file?: Blob | File;
+    filename?: string;
+    title?: string;
+    brandProfileId?: string;
+  }): Promise<InstantAnalysisResponse> {
+    if (options.file) {
+      const formData = new FormData();
+      const resolvedName =
+        options.filename ||
+        (options.file instanceof File ? options.file.name : "upload.pdf");
+      formData.append("file", options.file, resolvedName);
+      if (options.title) formData.append("title", options.title);
+      if (options.brandProfileId) formData.append("brand_profile_id", options.brandProfileId);
+
+      return this.request<InstantAnalysisResponse>("/api/v1/submissions/analyze-instant", {
+        method: "POST",
+        body: formData,
+      });
+    }
+
+    return this.request<InstantAnalysisResponse>("/api/v1/submissions/analyze-instant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: options.title,
+        content_text: options.text || "",
+        brand_profile_id: options.brandProfileId,
+      }),
     });
   }
 
@@ -353,26 +731,32 @@ export class BrandShieldClient {
     return this.request<Submission>(`/api/v1/submissions/${submissionId}`);
   }
 
+  public async listSubmissions(): Promise<Submission[]> {
+    return this.request<Submission[]>("/api/v1/submissions/");
+  }
+
   public async listRevisions(submissionId: string): Promise<DocumentRevision[]> {
-    return this.request<DocumentRevision[]>(
-      `/api/v1/submissions/${submissionId}/revisions`
-    );
+    return this.request<DocumentRevision[]>(`/api/v1/submissions/${submissionId}/revisions`);
   }
 
-  public async getRevisionDiff(
+  // ---------------------------------------------------------------------------
+  // Screen 3: 4-Stage Intelligence Pipeline & Live Stream
+  // ---------------------------------------------------------------------------
+
+  public async analyzeSubmission(
     submissionId: string,
-    fromRevision: number = 1,
-    toRevision?: number
+    requestedProvider: string = "Azure OpenAI"
   ): Promise<any> {
-    const q = new URLSearchParams({ from_revision: fromRevision.toString() });
-    if (toRevision) q.append("to_revision", toRevision.toString());
-    return this.request(`/api/v1/workflow/${submissionId}/revisions/diff?${q.toString()}`);
+    const q = new URLSearchParams({ requested_provider: requestedProvider });
+    return this.request(`/api/v1/analysis/submissions/${submissionId}/run?${q.toString()}`, {
+      method: "POST",
+    });
   }
 
-  // ---------------------------------------------------------------------------
-  // 4. Real-Time SSE Analysis Stream
-  // ---------------------------------------------------------------------------
-  public streamAnalysis(
+  /**
+   * Real-time Server-Sent Events (SSE) stream for interactive stage latencies and live findings.
+   */
+  public streamAnalysisSSE(
     submissionId: string,
     callbacks: {
       onStage?: (stage: string, latencyMs: number) => void;
@@ -381,9 +765,8 @@ export class BrandShieldClient {
       onError?: (error: Error) => void;
     }
   ): () => void {
-    const url = `${this.baseUrl}/api/v1/submissions/${submissionId}/analyze/stream?token=${encodeURIComponent(
-      this.token || ""
-    )}`;
+    const tokenParam = this.token ? `?token=${encodeURIComponent(this.token)}` : "";
+    const url = `${this.baseUrl}/api/v1/submissions/${submissionId}/analyze/stream${tokenParam}`;
 
     const eventSource = new EventSource(url);
 
@@ -406,32 +789,92 @@ export class BrandShieldClient {
     };
 
     eventSource.onerror = (err) => {
-      callbacks.onError?.(new Error("SSE Stream error occurred"));
+      callbacks.onError?.(new Error("SSE Stream connection error"));
       eventSource.close();
     };
 
     return () => eventSource.close();
   }
 
+  public streamAnalysis(
+    submissionId: string,
+    callbacks: {
+      onStage?: (stage: string, latencyMs: number) => void;
+      onFinding?: (finding: Finding) => void;
+      onComplete?: (totalFindings: number, durationMs: number) => void;
+      onError?: (error: Error) => void;
+    }
+  ): () => void {
+    return this.streamAnalysisSSE(submissionId, callbacks);
+  }
+
+  /**
+   * Sub-10ms inline co-pilot preflight evaluation for active text highlights.
+   */
+  public async preflightInline(
+    brandProfileId: string,
+    textSnippet: string
+  ): Promise<InlinePreflightResponse> {
+    return this.request<InlinePreflightResponse>("/api/v1/analysis/preflight-inline", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        brand_profile_id: brandProfileId,
+        text_snippet: textSnippet,
+      }),
+    });
+  }
+
   // ---------------------------------------------------------------------------
-  // 5. Creator Revision Resolution & Reviewer Sign-off
+  // Screen 4: Triage & Creator Workspace
   // ---------------------------------------------------------------------------
+
+  public async getFindings(revisionId: string): Promise<Finding[]> {
+    return this.request<Finding[]>(`/api/v1/analysis/revisions/${revisionId}/findings`);
+  }
+
+  /**
+   * Resolves a finding suggestion (ACCEPT, REJECT, or EDIT) and produces an immutable vN+1 revision.
+   */
+  public async resolveFindingSuggestion(
+    findingId: string,
+    action: "ACCEPT" | "REJECT" | "EDIT" | "ACCEPT_SUGGESTION" | "CUSTOM_EDIT" | "REJECT_WITH_RATIONALE",
+    customReplacement?: string,
+    rationale?: string,
+    submissionId?: string
+  ): Promise<any> {
+    let normalizedAction = action;
+    if (action === "ACCEPT") normalizedAction = "ACCEPT_SUGGESTION";
+    if (action === "REJECT") normalizedAction = "REJECT_WITH_RATIONALE";
+    if (action === "EDIT") normalizedAction = "CUSTOM_EDIT";
+
+    const path = submissionId
+      ? `/api/v1/workflow/${submissionId}/findings/${findingId}/resolve`
+      : `/api/v1/workflow/findings/${findingId}/resolve`;
+
+    return this.request(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: normalizedAction,
+        custom_replacement: customReplacement,
+        rationale: rationale,
+      }),
+    });
+  }
+
   public async resolveFinding(
     findingId: string,
     action: "ACCEPT_SUGGESTION" | "CUSTOM_EDIT" | "REJECT_WITH_RATIONALE",
     customReplacement?: string,
     rationale?: string
   ): Promise<any> {
-    return this.request(`/api/v1/workflow/findings/${findingId}/resolve`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action,
-        custom_replacement: customReplacement,
-        rationale,
-      }),
-    });
+    return this.resolveFindingSuggestion(findingId, action, customReplacement, rationale);
   }
+
+  // ---------------------------------------------------------------------------
+  // Screen 5: Governance Review & State Machine
+  // ---------------------------------------------------------------------------
 
   public async submitForReview(submissionId: string): Promise<Submission> {
     return this.request<Submission>(`/api/v1/workflow/${submissionId}/submit-for-review`, {
@@ -439,7 +882,7 @@ export class BrandShieldClient {
     });
   }
 
-  public async executeReviewDecision(
+  public async submitHumanReviewDecision(
     submissionId: string,
     decision: ReviewSignOff,
     comments: string,
@@ -456,14 +899,42 @@ export class BrandShieldClient {
     });
   }
 
+  public async executeReviewDecision(
+    submissionId: string,
+    decision: ReviewSignOff,
+    comments: string,
+    stipulations?: Record<string, unknown>
+  ): Promise<ReviewDecision> {
+    return this.submitHumanReviewDecision(submissionId, decision, comments, stipulations);
+  }
+
+  public async getRevisionDiff(
+    submissionId: string,
+    fromRevision: number = 1,
+    toRevision?: number
+  ): Promise<RevisionDiffResponse> {
+    const q = new URLSearchParams({ from_revision: fromRevision.toString() });
+    if (toRevision) q.append("to_revision", toRevision.toString());
+    return this.request<RevisionDiffResponse>(
+      `/api/v1/workflow/${submissionId}/revisions/diff?${q.toString()}`
+    );
+  }
+
   // ---------------------------------------------------------------------------
-  // 6. Governance & Recharts Analytics
+  // Screen 6: Recharts Governance Dashboard
   // ---------------------------------------------------------------------------
-  public async getGovernanceReports(
+
+  public async getGovernanceDashboardReport(
     brandProfileId?: string
   ): Promise<GovernanceReportResponse> {
     const q = brandProfileId ? `?brand_profile_id=${brandProfileId}` : "";
     return this.request<GovernanceReportResponse>(`/api/v1/governance/reports${q}`);
+  }
+
+  public async getGovernanceReports(
+    brandProfileId?: string
+  ): Promise<GovernanceReportResponse> {
+    return this.getGovernanceDashboardReport(brandProfileId);
   }
 
   public async getTraceabilityMetrics(
@@ -482,7 +953,7 @@ export class BrandShieldClient {
     );
   }
 
-  public async runEvaluationBenchmark(
+  public async runLabelledTestSetBenchmark(
     brandProfileId?: string
   ): Promise<EvaluationBenchmarkResponse> {
     const q = brandProfileId ? `?brand_profile_id=${brandProfileId}` : "";
@@ -491,4 +962,75 @@ export class BrandShieldClient {
       { method: "POST" }
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Screen 7: Safeguards & Attestation Authority
+  // ---------------------------------------------------------------------------
+
+  public async getPublicationCertificate(
+    submissionId: string
+  ): Promise<PublicationAttestationCertificateRead> {
+    return this.request<PublicationAttestationCertificateRead>(
+      `/api/v1/submissions/${submissionId}/certificate`
+    );
+  }
+
+  public async verifyPublicationCertificate(
+    payload: AttestationVerifyRequest
+  ): Promise<AttestationVerifyResponse> {
+    return this.request<AttestationVerifyResponse>("/api/v1/attestation/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async verifyAttestationCertificate(
+    payload: AttestationVerifyRequest
+  ): Promise<AttestationVerifyResponse> {
+    return this.verifyPublicationCertificate(payload);
+  }
+
+  public async verifyPublicationAttestation(
+    payload: AttestationVerifyRequest
+  ): Promise<AttestationVerifyResponse> {
+    return this.verifyPublicationCertificate(payload);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Screen 8: Knowledge Graph & Webhooks
+  // ---------------------------------------------------------------------------
+
+  public async triggerFactBlastRadius(
+    factId: string,
+    reason: string = "MANUAL_REVERIFICATION"
+  ): Promise<BlastRadiusTriggerResponse> {
+    return this.request<BlastRadiusTriggerResponse>(
+      `/api/v1/facts/${factId}/blast-radius?trigger_reason=${encodeURIComponent(reason)}`,
+      { method: "POST" }
+    );
+  }
+
+  public async getBlastRadius(
+    brandProfileId?: string
+  ): Promise<EnterpriseBlastRadiusOverview> {
+    const q = brandProfileId ? `?brand_profile_id=${brandProfileId}` : "";
+    return this.request<EnterpriseBlastRadiusOverview>(
+      `/api/v1/governance/blast-radius${q}`
+    );
+  }
+
+  public async flushWebhookOutbox(
+    limit: number = 50
+  ): Promise<OutboxFlushResponse> {
+    return this.request<OutboxFlushResponse>(
+      `/api/v1/webhooks/outbox/flush?limit=${limit}`,
+      { method: "POST" }
+    );
+  }
 }
+
+// Export default singleton instance for fast import:
+// import brandshield from "@/frontend_sdk/brandshieldClient";
+export const brandshield = new BrandShieldClient();
+export default brandshield;

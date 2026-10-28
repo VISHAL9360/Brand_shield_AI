@@ -165,4 +165,13 @@ class WorkflowReviewService:
             },
         )
 
+        # 7. Mint Cryptographic Publication Clearance Certificate Authority on APPROVED
+        if payload.decision == ReviewSignOff.APPROVED:
+            from app.services.workflow.attestation_service import PublicationAttestationService
+            await PublicationAttestationService.mint_certificate(
+                session=session,
+                submission=submission,
+                reviewer_id=reviewer.id,
+            )
+
         return decision

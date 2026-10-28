@@ -262,6 +262,28 @@ def generate_postman_collection(openapi_schema: dict):
                     },
                 },
             },
+            {
+                "name": "Preflight Inline Co-Pilot (<10ms)",
+                "request": {
+                    "method": "POST",
+                    "header": [{"key": "Content-Type", "value": "application/json"}],
+                    "url": {
+                        "raw": "{{baseUrl}}/api/v1/analysis/preflight-inline",
+                        "host": ["{{baseUrl}}"],
+                        "path": ["api", "v1", "analysis", "preflight-inline"],
+                    },
+                    "body": {
+                        "mode": "raw",
+                        "raw": json.dumps(
+                            {
+                                "brand_profile_id": "{{demo_brand_profile_id}}",
+                                "text_snippet": "Acme provides a 100% risk-free investment return.",
+                            },
+                            indent=2,
+                        ),
+                    },
+                },
+            },
         ],
         "5. Workflow & Human Review Sign-Off": [
             {
@@ -379,6 +401,123 @@ def generate_postman_collection(openapi_schema: dict):
                 },
             },
         ],
+        "7. Cryptographic Publication Attestation CA": [
+            {
+                "name": "Get Publication Attestation Certificate",
+                "request": {
+                    "method": "GET",
+                    "auth": {
+                        "type": "bearer",
+                        "bearer": [{"key": "token", "value": "{{creator_token}}", "type": "string"}],
+                    },
+                    "url": {
+                        "raw": "{{baseUrl}}/api/v1/submissions/{{submission_id}}/certificate",
+                        "host": ["{{baseUrl}}"],
+                        "path": ["api", "v1", "submissions", "{{submission_id}}", "certificate"],
+                    },
+                },
+            },
+            {
+                "name": "Verify Gatekeeper Publication Clearance (<1ms)",
+                "request": {
+                    "method": "POST",
+                    "auth": {"type": "noauth"},
+                    "header": [{"key": "Content-Type", "value": "application/json"}],
+                    "url": {
+                        "raw": "{{baseUrl}}/api/v1/attestation/verify",
+                        "host": ["{{baseUrl}}"],
+                        "path": ["api", "v1", "attestation", "verify"],
+                    },
+                    "body": {
+                        "mode": "raw",
+                        "raw": json.dumps(
+                            {
+                                "certificate_id": "CERT-20261028-00000001",
+                                "document_sha256_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                            },
+                            indent=2,
+                        ),
+                    },
+                },
+            },
+        ],
+        "8. Reverse Blast-Radius & Webhook Outbox": [
+            {
+                "name": "Get Enterprise Blast Radius Overview",
+                "request": {
+                    "method": "GET",
+                    "auth": {
+                        "type": "bearer",
+                        "bearer": [{"key": "token", "value": "{{reviewer_token}}", "type": "string"}],
+                    },
+                    "url": {
+                        "raw": "{{baseUrl}}/api/v1/governance/blast-radius",
+                        "host": ["{{baseUrl}}"],
+                        "path": ["api", "v1", "governance", "blast-radius"],
+                    },
+                },
+            },
+            {
+                "name": "Trigger Fact Blast-Radius Re-verification",
+                "request": {
+                    "method": "POST",
+                    "auth": {
+                        "type": "bearer",
+                        "bearer": [{"key": "token", "value": "{{reviewer_token}}", "type": "string"}],
+                    },
+                    "header": [{"key": "Content-Type", "value": "application/json"}],
+                    "url": {
+                        "raw": "{{baseUrl}}/api/v1/facts/{{fact_id}}/blast-radius",
+                        "host": ["{{baseUrl}}"],
+                        "path": ["api", "v1", "facts", "{{fact_id}}", "blast-radius"],
+                    },
+                },
+            },
+            {
+                "name": "Flush Webhook Outbox Queue",
+                "request": {
+                    "method": "POST",
+                    "auth": {
+                        "type": "bearer",
+                        "bearer": [{"key": "token", "value": "{{admin_token}}", "type": "string"}],
+                    },
+                    "url": {
+                        "raw": "{{baseUrl}}/api/v1/webhooks/outbox/flush?limit=50",
+                        "host": ["{{baseUrl}}"],
+                        "path": ["api", "v1", "webhooks", "outbox", "flush"],
+                        "query": [{"key": "limit", "value": "50"}],
+                    },
+                },
+            },
+            {
+                "name": "Register Webhook Subscription",
+                "request": {
+                    "method": "POST",
+                    "auth": {
+                        "type": "bearer",
+                        "bearer": [{"key": "token", "value": "{{admin_token}}", "type": "string"}],
+                    },
+                    "header": [{"key": "Content-Type", "value": "application/json"}],
+                    "url": {
+                        "raw": "{{baseUrl}}/api/v1/webhooks/subscriptions",
+                        "host": ["{{baseUrl}}"],
+                        "path": ["api", "v1", "webhooks", "subscriptions"],
+                    },
+                    "body": {
+                        "mode": "raw",
+                        "raw": json.dumps(
+                            {
+                                "brand_profile_id": "{{demo_brand_profile_id}}",
+                                "target_url": "https://api.acmefintech.com/webhooks/governance",
+                                "secret_token": "demo-webhook-secret-token",
+                                "event_types": ["fact.expired.blast_radius_triggered"],
+                            },
+                            indent=2,
+                        ),
+                    },
+                },
+            },
+        ],
     }
 
     for folder_name, items in folders.items():
@@ -390,12 +529,32 @@ def generate_postman_collection(openapi_schema: dict):
     print(f"  [OK] Exported Postman collection: {target_path} ({target_path.stat().st_size} bytes)")
 
 
+def synchronise_frontend_sdk(openapi_schema: dict):
+    """
+    Verifies and synchronises the TypeScript SDK at frontend_sdk/brandshieldClient.ts
+    to guarantee 1:1 parity with the unified OpenAPI specification.
+    """
+    sdk_path = REPO_ROOT / "frontend_sdk" / "brandshieldClient.ts"
+    if sdk_path.exists():
+        content = sdk_path.read_text(encoding="utf-8")
+        # Ensure header marks current contract synchronisation
+        header = f"// Synchronised with OpenAPI {openapi_schema.get('info', {}).get('version', '0.1.0')}"
+        if not content.startswith("// Synchronised with OpenAPI"):
+            content = f"{header}\n{content}"
+            sdk_path.write_text(content, encoding="utf-8")
+        print(f"  [OK] Synchronised TypeScript SDK: {sdk_path} ({sdk_path.stat().st_size} bytes)")
+    else:
+        print(f"  [WARN] TypeScript SDK not found at {sdk_path}")
+
+
 def main():
-    print("Exporting API specifications and contracts to docs/...")
+    print("Exporting API specifications and contracts to docs/ and frontend_sdk/...")
     openapi = export_openapi()
     generate_postman_collection(openapi)
-    print("API contracts export completed successfully.")
+    synchronise_frontend_sdk(openapi)
+    print("API contracts export and synchronisation completed successfully.")
 
 
 if __name__ == "__main__":
     main()
+

@@ -18,7 +18,8 @@ from app.core.exceptions import ConflictProblem, NotFoundProblem, ValidationErro
 from app.domain.enums import AuditAction, CreatorAction, WorkflowState
 from app.domain.schemas.submission import FindingResolutionRequest, FindingResolutionResponse
 from app.domain.state_machine import SubmissionStateMachine
-from app.infrastructure.db.models import DocumentRevision, Finding, Submission, User
+from app.infrastructure.db.models import BrandProfile, DocumentRevision, Finding, Submission, User
+from app.core.crypto_storage import CryptoStorageEngine
 from app.services.audit_service import AuditService
 from app.services.ingestion.parser import OffsetPreservingASTParser
 from app.services.workflow.diff_service import DiffService
@@ -155,7 +156,9 @@ class RevisionEngine:
             )
 
         # 5. Apply correction into parent content: NEVER overwrite original snapshot!
-        parent_text = current_rev.content_text
+        brand_profile = await session.get(BrandProfile, submission.brand_profile_id) if submission else None
+        should_protect = CryptoStorageEngine.should_protect(brand_profile)
+        parent_text = CryptoStorageEngine.decrypt_content(current_rev.content_text)
         s_start = max(0, min(finding.start_offset, len(parent_text)))
         s_end = max(s_start, min(finding.end_offset, len(parent_text)))
 
@@ -166,8 +169,13 @@ class RevisionEngine:
         new_span_map = parsed_doc.ast_span_map
 
         # 7. Compute unified line diff against parent revision
-        diff_summary = DiffService.compute_line_diff(current_rev.content_text, new_content)
+        diff_summary = DiffService.compute_line_diff(parent_text, new_content)
         new_hash = hashlib.sha256(new_content.encode("utf-8")).hexdigest()
+        stored_content = (
+            CryptoStorageEngine.encrypt_content(new_content)
+            if should_protect
+            else new_content
+        )
 
         # 8. Commit append-only child DocumentRevision (vN+1)
         new_revision = DocumentRevision(
@@ -175,7 +183,7 @@ class RevisionEngine:
             submission_id=submission.id,
             revision_number=current_rev.revision_number + 1,
             parent_revision_id=current_rev.id,
-            content_text=new_content,
+            content_text=stored_content,
             ast_span_map=new_span_map,
             created_by_id=actor.id,
             sha256_content_hash=new_hash,

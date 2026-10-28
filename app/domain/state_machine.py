@@ -127,11 +127,24 @@ class SubmissionStateMachine:
         target_state: WorkflowState,
         actor_role: Optional[UserRole] = None,
         is_ai: bool = False,
+        expected_version: Optional[int] = None,
     ) -> WorkflowState:
         """
-        Validates and transitions the submission's workflow state.
+        Validates and transitions the submission's workflow state with optimistic concurrency control.
         Mutates submission.workflow_state in-place.
         """
+        if expected_version is not None:
+            curr_ver = getattr(submission, "version_number", 1) or 1
+            if curr_ver != expected_version:
+                raise StateTransitionConflictProblem(
+                    detail=(
+                        f"Optimistic Concurrency Conflict: Expected document version {expected_version}, "
+                        f"but active database version is {curr_ver}. State transition aborted."
+                    ),
+                    from_state=submission.workflow_state.value,
+                    to_state=target_state.value,
+                    actor_role=actor_role.value if actor_role else "SYSTEM",
+                )
         cls.validate_transition(
             current_state=submission.workflow_state,
             target_state=target_state,
@@ -140,3 +153,4 @@ class SubmissionStateMachine:
         )
         submission.workflow_state = target_state
         return target_state
+

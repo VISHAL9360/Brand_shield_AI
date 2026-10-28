@@ -16,11 +16,18 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-from app.core.config import get_settings
+import os
+from app.core.config import get_settings, normalize_database_url
 from app.infrastructure.db.models import Base
 
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.ASYNC_DATABASE_URL)
+raw_db_url = (
+    os.environ.get("ALEMBIC_DATABASE_URL")
+    or os.environ.get("DATABASE_URL")
+    or settings.ASYNC_DATABASE_URL
+)
+clean_url, auto_args = normalize_database_url(raw_db_url)
+config.set_main_option("sqlalchemy.url", clean_url)
 
 target_metadata = Base.metadata
 
@@ -48,6 +55,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        render_as_batch=True,
     )
 
     with context.begin_transaction():
@@ -59,6 +67,7 @@ def do_run_migrations(connection: Connection) -> None:
         connection=connection,
         target_metadata=target_metadata,
         compare_type=True,
+        render_as_batch=True,
     )
 
     with context.begin_transaction():
@@ -70,17 +79,24 @@ async def run_async_migrations() -> None:
     and associate a connection with the context.
 
     """
+    db_url = config.get_main_option("sqlalchemy.url")
+    connect_args = dict(auto_args)
+    if "sqlite" in db_url:
+        connect_args["check_same_thread"] = False
 
+    configuration = config.get_section(config.config_ini_section, {})
     connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
 
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
 
     await connectable.dispose()
+
 
 
 def run_migrations_online() -> None:

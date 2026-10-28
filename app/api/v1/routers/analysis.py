@@ -8,18 +8,20 @@ Exposes endpoints to:
 5. Monitor intelligence engine health, circuit breaker, and demo fallback cache (GET /analysis/status).
 """
 
+import asyncio
 from datetime import datetime, timezone
+import inspect
 import time
 from typing import Annotated, Optional
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Header, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictProblem, NotFoundProblem, ValidationErrorProblem
-from app.core.security import get_current_user
-from app.domain.enums import FindingCategory, SeverityLevel, TriageStatus
+from app.core.security import get_current_user, get_current_user_optional
+from app.domain.enums import DetectorSource, FindingCategory, SeverityLevel, TriageStatus
 from app.domain.schemas.analysis import (
     AdHocAnalysisRequest,
     AdHocAnalysisResponse,
@@ -27,6 +29,9 @@ from app.domain.schemas.analysis import (
     AnalysisEngineStatusResponse,
     AnalysisPipelineResultResponse,
     AnalysisPipelineRunRequest,
+    InlinePreflightRequest,
+    InlinePreflightResponse,
+    InlineSpanHighlight,
 )
 from app.domain.schemas.finding import FindingRead
 from app.infrastructure.db.models import (
@@ -37,14 +42,16 @@ from app.infrastructure.db.models import (
     User,
 )
 from app.infrastructure.db.session import get_async_session
+from app.services.analysis.adversarial_critic import AdversarialCritic
 from app.services.analysis.demo_fallback_cache import DemoFallbackCache
-from app.services.analysis.deterministic_engine import DeterministicRuleEngine
+from app.services.analysis.deterministic_engine import BrandAutomatonCache, DeterministicRuleEngine
 from app.services.analysis.privacy_gate import PrivacyGateRouter
 from app.services.analysis.temporal_fact_engine import TemporalFactEngine
 from app.services.analysis.triage_orchestrator import TriageOrchestrator
 
 router = APIRouter()
 AuthenticatedUser = Annotated[User, Depends(get_current_user)]
+OptionalUser = Annotated[Optional[User], Depends(get_current_user_optional)]
 
 
 @router.post(
@@ -63,6 +70,7 @@ async def run_analysis_pipeline(
     payload: AnalysisPipelineRunRequest,
     current_user: AuthenticatedUser,
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    x_ai_plugin_id: Annotated[Optional[str], Header(alias="X-AI-Plugin-ID")] = None,
 ) -> AnalysisPipelineResultResponse:
     """
     Executes the 4-stage intelligence pipeline on an immutable document revision:
@@ -106,6 +114,7 @@ async def run_analysis_pipeline(
         "content_text": revision.content_text,
         "requested_provider": payload.requested_provider,
         "preloaded_profile": profile,
+        "ai_plugin_id": x_ai_plugin_id,
     }
     if payload.audit_sample_rate is not None:
         kwargs["audit_sample_rate"] = payload.audit_sample_rate
@@ -124,6 +133,7 @@ async def run_analysis_pipeline(
         stale_facts_to_reverify=pipeline_result.stale_facts_to_reverify,
         needs_verification_missing_evidence=pipeline_result.needs_verification_missing_evidence,
         automation_bias_audits_injected=pipeline_result.automation_bias_audits_injected,
+        suppressed_false_positives_count=getattr(pipeline_result, "suppressed_false_positives_count", 0),
         processing_duration_ms=pipeline_result.processing_duration_ms,
         findings=finding_reads,
     )
@@ -140,6 +150,7 @@ async def run_analysis_for_submission(
     current_user: AuthenticatedUser,
     session: Annotated[AsyncSession, Depends(get_async_session)],
     requested_provider: str = Query(default="Azure OpenAI"),
+    x_ai_plugin_id: Annotated[Optional[str], Header(alias="X-AI-Plugin-ID")] = None,
 ) -> AnalysisPipelineResultResponse:
     """
     Convenience endpoint triggering compliance analysis on the active head revision of a submission.
@@ -167,6 +178,7 @@ async def run_analysis_for_submission(
         payload=run_payload,
         current_user=current_user,
         session=session,
+        x_ai_plugin_id=x_ai_plugin_id,
     )
 
 
@@ -358,4 +370,131 @@ async def get_analysis_engine_status(
         circuit_breaker_state=cb_state,
         circuit_breaker_available=cb_available,
         fallback_cache_size=DemoFallbackCache.get_cache_size(),
+    )
+
+
+@router.post(
+    "/preflight-inline",
+    response_model=InlinePreflightResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Sub-10ms Live-Typing Inline Co-Pilot Preflight",
+)
+async def preflight_inline(
+    payload: InlinePreflightRequest,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: OptionalUser = None,
+) -> InlinePreflightResponse:
+    """
+    Sub-10ms stateless, zero-DB-write endpoint powered by L1 BrandAutomatonCache.
+    Evaluates real-time keystroke snippets against pre-compiled Aho-Corasick state machines
+    and the Adversarial Critic false-positive filter, returning span highlights and suggestions in <5ms.
+    """
+    t0 = time.perf_counter()
+    snippet = payload.text_snippet or ""
+
+    # 1. Resolve L1 In-Memory Automaton Bundle
+    bundle = None
+    for (prof_id, _), b in BrandAutomatonCache._cache.items():
+        if str(prof_id) == str(payload.brand_profile_id):
+            bundle = b
+            break
+
+    # Cold cache fallback: warm bundle once from DB if not yet compiled in memory
+    if not bundle:
+        profile = await session.get(BrandProfile, payload.brand_profile_id)
+        if profile:
+            from app.infrastructure.db.models import BrandGuideline
+            g_res = await session.execute(
+                select(BrandGuideline).where(
+                    BrandGuideline.brand_profile_id == payload.brand_profile_id,
+                    BrandGuideline.is_active == True,  # noqa: E712
+                )
+            )
+            scalars_obj = g_res.scalars() if hasattr(g_res, "scalars") else None
+            if asyncio.iscoroutine(scalars_obj):
+                scalars_obj = await scalars_obj
+            if scalars_obj and hasattr(scalars_obj, "all"):
+                all_res = scalars_obj.all()
+                if asyncio.iscoroutine(all_res):
+                    all_res = await all_res
+                guidelines = list(all_res)
+            else:
+                guidelines = []
+            bundle = BrandAutomatonCache.get_or_compile(profile, guidelines)
+
+    raw_highlights: list[InlineSpanHighlight] = []
+
+    if bundle:
+        # 2. O(N) Multi-Pattern String Matching via L1 Automaton
+        ci_matches = bundle.ci_automaton.search(snippet)
+        for start, end, match_payload in ci_matches:
+            raw_highlights.append(
+                InlineSpanHighlight(
+                    start_offset=start,
+                    end_offset=end,
+                    matched_term=match_payload.term,
+                    issue_category=match_payload.category,
+                    severity=match_payload.severity,
+                    explanation_reason=match_payload.reason,
+                    suggested_replacement=match_payload.suggested_correction,
+                    confidence_score=1.0,
+                )
+            )
+
+        cs_matches = bundle.cs_automaton.search(snippet)
+        for start, end, match_payload in cs_matches:
+            raw_highlights.append(
+                InlineSpanHighlight(
+                    start_offset=start,
+                    end_offset=end,
+                    matched_term=match_payload.term,
+                    issue_category=match_payload.category,
+                    severity=match_payload.severity,
+                    explanation_reason=match_payload.reason,
+                    suggested_replacement=match_payload.suggested_correction,
+                    confidence_score=1.0,
+                )
+            )
+
+    # 3. Adversarial False-Positive Filtration for Real-Time Typing
+    # Suppresses false alarms (e.g. author typing "We do not claim X" or quoted competitor phrases)
+    clean_highlights: list[InlineSpanHighlight] = []
+    for h in raw_highlights:
+        surrogate = Finding(
+            start_offset=h.start_offset,
+            end_offset=h.end_offset,
+            issue_category=h.issue_category,
+            severity=h.severity,
+            confidence_score=h.confidence_score,
+            explanation_reason=h.explanation_reason,
+            detector_source=DetectorSource.DETERMINISTIC_RULE,
+        )
+        is_fp, _ = AdversarialCritic.evaluate_false_positive(snippet, surrogate)
+        if not is_fp:
+            uncertainty = AdversarialCritic.compute_epistemic_uncertainty(surrogate, snippet)
+            h.epistemic_uncertainty_score = uncertainty
+            h.counterfactual_risk_summary = AdversarialCritic.generate_counterfactual_risk_summary(surrogate, h.matched_term)
+            h.start_char = h.start_offset
+            h.end_char = h.end_offset
+            h.flagged_text = h.matched_term
+            h.suggested_correction = h.suggested_replacement
+            clean_highlights.append(h)
+
+    # Deduplicate and sort highlights by character offset
+    clean_highlights.sort(key=lambda x: (x.start_offset, -(x.end_offset - x.start_offset)))
+
+    latency_ms = round((time.perf_counter() - t0) * 1000, 3)
+    replacements_count = sum(1 for h in clean_highlights if h.suggested_replacement)
+
+    is_compliant = (len(clean_highlights) == 0)
+
+    return InlinePreflightResponse(
+        latency_ms=latency_ms,
+        clean_pass=is_compliant,
+        character_count=len(snippet),
+        span_highlights=clean_highlights,
+        suggested_replacements_count=replacements_count,
+        is_compliant=is_compliant,
+        total_spans_detected=len(clean_highlights),
+        spans=clean_highlights,
     )

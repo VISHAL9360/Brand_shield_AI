@@ -40,6 +40,7 @@ from app.domain.enums import (
     SeverityLevel,
     TriageStatus,
     UserRole,
+    WebhookDeliveryStatus,
     WorkflowState,
 )
 from app.infrastructure.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -550,6 +551,75 @@ class ApprovedFact(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         self.original_source_url = val
 
 
+class ApprovedBrandAsset(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """
+    Organization brand asset registry tracking logos, icons, and graphics with perceptual hashes.
+    """
+    __tablename__ = "approved_brand_assets"
+
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        doc="Parent tenant boundary.",
+    )
+    brand_profile_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("brand_profiles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        doc="Parent brand profile.",
+    )
+    asset_name: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        doc="Official brand asset title.",
+    )
+    asset_category: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        default="LOGO",
+        doc="Asset classification (LOGO, ICON, BADGE, PRODUCT_GRAPHIC).",
+    )
+    phash: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        index=True,
+        doc="64-bit perceptual frequency hash in hex format.",
+    )
+    dhash: Mapped[Optional[str]] = mapped_column(
+        String(64),
+        nullable=True,
+        doc="64-bit perceptual difference hash in hex format.",
+    )
+    color_palette: Mapped[list[str]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=list,
+        server_default=text("'[]'::jsonb"),
+        doc="Primary and secondary hex color palette.",
+    )
+    aspect_ratio: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+        default=1.0,
+        doc="Native width/height ratio.",
+    )
+    file_url: Mapped[str] = mapped_column(
+        String(1024),
+        nullable=False,
+        doc="CDN asset storage location.",
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        nullable=False,
+        server_default=text("true"),
+        doc="Active flag.",
+    )
+
+
 # ==============================================================================
 # 5. Submissions & Immutable Git-Like Revision DAG
 # ==============================================================================
@@ -856,6 +926,18 @@ class Finding(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=True,
         doc="Optional rationale provided by author if rejecting or editing the finding."
     )
+    epistemic_uncertainty_score: Mapped[Optional[float]] = mapped_column(
+        Float,
+        nullable=True,
+        default=0.0,
+        server_default=text("0.0"),
+        doc="Epistemic uncertainty score computed by Adversarial Critic [0.0, 1.0]."
+    )
+    counterfactual_risk_summary: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Adversarial Critic explanation of brand/legal risk if published unedited."
+    )
 
     # Constraints & Indexes
     __table_args__ = (
@@ -1018,3 +1100,329 @@ class AuditLedger(Base):
     # Relationships
     workspace: Mapped[Optional[Workspace]] = relationship("Workspace", back_populates="audit_logs")
     actor: Mapped[Optional[User]] = relationship("User")
+
+
+# ==============================================================================
+# 8. Bi-Directional Citation Knowledge Graph & Blast-Radius Engine
+# ==============================================================================
+
+class CitationDependencyEdge(Base, UUIDPrimaryKeyMixin):
+    """
+    Bi-directional citation knowledge graph edge.
+    Explicitly tracks citation lineage between immutable revisions/findings and
+    upstream compliance directives (BrandGuideline) or ground-truth evidence (ApprovedFact).
+    Enables O(1) indexed reverse blast-radius traversal when facts expire or are revoked.
+    """
+    __tablename__ = "citation_dependency_edges"
+
+    submission_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("submissions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        doc="Governed submission lineage root."
+    )
+    revision_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("document_revisions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        doc="Specific immutable document revision snapshot."
+    )
+    finding_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("findings.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        doc="Specific detection finding referencing the citation."
+    )
+    linked_fact_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("approved_facts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        doc="Pointer to upstream ApprovedFact ground-truth claim."
+    )
+    linked_guideline_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("brand_guidelines.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        doc="Pointer to upstream BrandGuideline policy clause."
+    )
+    start_offset: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        doc="Start character index of the cited claim in revision content_text."
+    )
+    end_offset: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        doc="End character index of the cited claim in revision content_text."
+    )
+    citation_hash: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        index=True,
+        doc="SHA-256 fingerprint sealing the citation text span and target fact/guideline."
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=text("clock_timestamp()"),
+        nullable=False,
+        doc="Edge creation timestamp."
+    )
+
+    # Constraints & Indexes
+    __table_args__ = (
+        Index("ix_citation_fact_sub", "linked_fact_id", "submission_id"),
+        Index("ix_citation_guideline_sub", "linked_guideline_id", "submission_id"),
+        Index("ix_citation_rev_finding", "revision_id", "finding_id"),
+    )
+
+    # Relationships
+    submission: Mapped[Submission] = relationship("Submission")
+    revision: Mapped[DocumentRevision] = relationship("DocumentRevision")
+    finding: Mapped[Finding] = relationship("Finding")
+    linked_fact: Mapped[Optional[ApprovedFact]] = relationship("ApprovedFact")
+    linked_guideline: Mapped[Optional[BrandGuideline]] = relationship("BrandGuideline")
+
+
+# ==============================================================================
+# 9. Transactional Outbox Pattern & Webhook Subscriptions (AWS/Stripe Model)
+# ==============================================================================
+
+class OutboxWebhookEvent(Base, UUIDPrimaryKeyMixin):
+    """
+    Transactional Outbox event record (AWS/Stripe Pattern).
+    Guarantees at-least-once asynchronous webhook delivery without two-phase commit (2PC) overhead.
+    Events are committed within the same database transaction as blast-radius state mutations.
+    """
+    __tablename__ = "outbox_webhook_events"
+
+    brand_profile_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("brand_profiles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        doc="Target brand profile boundary."
+    )
+    event_type: Mapped[str] = mapped_column(
+        String(128),
+        nullable=False,
+        index=True,
+        doc="Domain event name (e.g. 'fact.expired.blast_radius_triggered')."
+    )
+    payload_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+        doc="Event payload body dispatched to webhook endpoints."
+    )
+    hmac_signature: Mapped[str] = mapped_column(
+        String(128),
+        nullable=False,
+        doc="HMAC-SHA256 signature calculated over payload_json."
+    )
+    delivery_status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="PENDING",
+        server_default=text("'PENDING'"),
+        index=True,
+        doc="Outbox lifecycle: PENDING, DELIVERED, FAILED_RETRYING, DEAD_LETTER_QUEUE."
+    )
+    attempt_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default=text("0"),
+        doc="Total delivery attempts executed."
+    )
+    next_retry_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+        doc="Timestamp after which dispatcher will retry with exponential backoff."
+    )
+    last_error: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Diagnostic response body or exception trace from most recent attempt."
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=text("clock_timestamp()"),
+        nullable=False,
+        index=True,
+        doc="Creation timestamp."
+    )
+    delivered_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        doc="Successful delivery timestamp."
+    )
+
+    __table_args__ = (
+        Index("ix_outbox_status_next_retry", "delivery_status", "next_retry_at"),
+        Index("ix_outbox_brand_status", "brand_profile_id", "delivery_status"),
+    )
+
+    # Relationships
+    brand_profile: Mapped[BrandProfile] = relationship("BrandProfile")
+
+    @property
+    def payload(self) -> dict[str, Any]:
+        """Convenience property alias for payload_json."""
+        return self.payload_json
+
+    @payload.setter
+    def payload(self, val: dict[str, Any]) -> None:
+        self.payload_json = val
+
+
+class WebhookSubscription(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """
+    Tenant webhook registration endpoint subscribing to governance & blast-radius events.
+    """
+    __tablename__ = "webhook_subscriptions"
+
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        doc="Tenant workspace boundary."
+    )
+    brand_profile_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("brand_profiles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        doc="Target brand profile boundary."
+    )
+    target_url: Mapped[str] = mapped_column(
+        String(512),
+        nullable=False,
+        doc="HTTPS destination callback URI."
+    )
+    secret_token: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        doc="Shared tenant secret key for HMAC-SHA256 signature verification."
+    )
+    event_types: Mapped[list[str]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=lambda: ["*"],
+        server_default=text("'[\"*\"]'::jsonb"),
+        doc="List of subscribed event names or wildcard ['*']."
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        nullable=False,
+        server_default=text("true"),
+        doc="Subscription active status flag."
+    )
+
+    __table_args__ = (
+        Index("ix_webhook_subs_brand_active", "brand_profile_id", "is_active"),
+    )
+
+    # Relationships
+    workspace: Mapped[Workspace] = relationship("Workspace")
+    brand_profile: Mapped[BrandProfile] = relationship("BrandProfile")
+
+
+class PublicationAttestationCertificate(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """
+    Immutable Cryptographic Publication Clearance Certificate Authority.
+    Minted when an authorized Reviewer or Administrator approves a submission.
+    Binds the approved revision's SHA-256 hash, Merkle root of cited facts/guidelines,
+    reviewer identity, and temporal validity window bounded by earliest fact expiry.
+    """
+    __tablename__ = "publication_attestation_certificates"
+
+    submission_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("submissions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        doc="Approved submission reference."
+    )
+    approved_revision_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("document_revisions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        doc="Exact approved document revision snapshot."
+    )
+    document_sha256_hash: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        index=True,
+        doc="SHA-256 digest of plaintext approved document content."
+    )
+    reviewer_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        doc="Reviewer or Administrator who certified approval."
+    )
+    brand_profile_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("brand_profiles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        doc="Associated brand profile authority."
+    )
+    merkle_root_of_cited_facts_and_guidelines: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        doc="Merkle root of cited facts and brand guideline clauses at time of clearance."
+    )
+    issued_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True,
+        doc="UTC timestamp when clearance was minted."
+    )
+    valid_until: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True,
+        doc="UTC expiration bounded by the earliest cited fact expiration."
+    )
+    cryptographic_signature: Mapped[str] = mapped_column(
+        String(256),
+        nullable=False,
+        doc="HMAC-SHA256 signature sealing canonical certificate contents."
+    )
+    status: Mapped[str] = mapped_column(
+        String(32),
+        default="ACTIVE",
+        server_default=text("'ACTIVE'"),
+        nullable=False,
+        index=True,
+        doc="Attestation status: ACTIVE, REVOKED, or EXPIRED."
+    )
+    metadata_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSONB,
+        nullable=True,
+        doc="Supplementary audit metadata including cited fact IDs and reviewer stipulations."
+    )
+
+    __table_args__ = (
+        Index("ix_pub_attest_sub_active", "submission_id", "status"),
+        Index("ix_pub_attest_validity", "valid_until", "status"),
+    )
+
+    # Relationships
+    submission: Mapped["Submission"] = relationship("Submission")
+    approved_revision: Mapped["DocumentRevision"] = relationship("DocumentRevision")
+    reviewer: Mapped["User"] = relationship("User")
+    brand_profile: Mapped["BrandProfile"] = relationship("BrandProfile")
+

@@ -15,11 +15,21 @@ from app.domain.ai_plugin_port import (
     PluginToneAnalysisResult,
     PluginToneFinding,
 )
+from app.services.analysis.plugins.default_ai_plugin import (
+    DefaultAIAnalyzerPlugin,
+    DefaultVectorRetrieverPlugin,
+)
+from app.services.analysis.plugins.ai_role_template import (
+    TeammateAIAnalyzerPlugin,
+    TeammateVectorRetrieverPlugin,
+)
 
 __all__ = [
     "AIPluginRegistry",
     "BaseAIAnalyzerPlugin",
     "BaseVectorRetrieverPlugin",
+    "DefaultAIAnalyzerPlugin",
+    "DefaultVectorRetrieverPlugin",
     "PluginClaimContext",
     "PluginClaimFinding",
     "PluginDocumentContext",
@@ -27,4 +37,6 @@ __all__ = [
     "PluginRetrievedDocument",
     "PluginToneAnalysisResult",
     "PluginToneFinding",
+    "TeammateAIAnalyzerPlugin",
+    "TeammateVectorRetrieverPlugin",
 ]

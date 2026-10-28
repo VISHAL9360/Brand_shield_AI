@@ -11,7 +11,7 @@
         "tags": [
           "Health & Probes"
         ],
-        "summary": "Health Check",
+        "summary": "Liveness Probe",
         "description": "Lightweight liveness probe.",
         "operationId": "health_check_api_v1_health_get",
         "responses": {
@@ -37,7 +37,7 @@
         "tags": [
           "Health & Probes"
         ],
-        "summary": "Readiness Check",
+        "summary": "Readiness Probe",
         "description": "Readiness probe validating database connectivity and pgvector support.",
         "operationId": "readiness_check_api_v1_ready_get",
         "responses": {
@@ -49,6 +49,152 @@
                   "additionalProperties": true,
                   "type": "object",
                   "title": "Response Readiness Check Api V1 Ready Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/diagnostics": {
+      "get": {
+        "tags": [
+          "Health & Probes"
+        ],
+        "summary": "Deep System Diagnostics & Telemetry",
+        "description": "Tier-0 Architectural Diagnostics snapshot measuring live event loop responsiveness,\nL1 automaton cache performance, circuit-breaker readiness, and cryptographic integrity.",
+        "operationId": "get_system_diagnostics_api_v1_diagnostics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get System Diagnostics Api V1 Diagnostics Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai-plugins": {
+      "get": {
+        "tags": [
+          "Health & Probes"
+        ],
+        "summary": "Live AI Plugin Registry Introspection",
+        "description": "Introspects the live AI Teammate PluginRegistry, returning all registered\nanalyzer and vector retriever plugins, their versions, and activation header specifications.\nAllows callers to select the active plugin via the X-AI-Plugin-ID header.",
+        "operationId": "list_ai_plugins_api_v1_ai_plugins_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response List Ai Plugins Api V1 Ai Plugins Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/health": {
+      "get": {
+        "tags": [
+          "System Diagnostics & Introspection"
+        ],
+        "summary": "Liveness Probe",
+        "description": "Lightweight liveness probe.",
+        "operationId": "health_check_api_v1_system_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Check Api V1 System Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/ready": {
+      "get": {
+        "tags": [
+          "System Diagnostics & Introspection"
+        ],
+        "summary": "Readiness Probe",
+        "description": "Readiness probe validating database connectivity and pgvector support.",
+        "operationId": "readiness_check_api_v1_system_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Readiness Check Api V1 System Ready Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/diagnostics": {
+      "get": {
+        "tags": [
+          "System Diagnostics & Introspection"
+        ],
+        "summary": "Deep System Diagnostics & Telemetry",
+        "description": "Tier-0 Architectural Diagnostics snapshot measuring live event loop responsiveness,\nL1 automaton cache performance, circuit-breaker readiness, and cryptographic integrity.",
+        "operationId": "get_system_diagnostics_api_v1_system_diagnostics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get System Diagnostics Api V1 System Diagnostics Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/ai-plugins": {
+      "get": {
+        "tags": [
+          "System Diagnostics & Introspection"
+        ],
+        "summary": "Live AI Plugin Registry Introspection",
+        "description": "Introspects the live AI Teammate PluginRegistry, returning all registered\nanalyzer and vector retriever plugins, their versions, and activation header specifications.\nAllows callers to select the active plugin via the X-AI-Plugin-ID header.",
+        "operationId": "list_ai_plugins_api_v1_system_ai_plugins_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response List Ai Plugins Api V1 System Ai Plugins Get"
                 }
               }
             }
@@ -251,6 +397,30 @@
         ]
       }
     },
+    "/api/v1/auth/demo-tokens": {
+      "get": {
+        "tags": [
+          "Authentication & Session"
+        ],
+        "summary": "One-Click Frontend Role Switcher Demo Tokens",
+        "description": "Returns pre-signed, ready-to-use JWT access tokens and user profile objects\nfor all 3 RBAC roles (CREATOR, REVIEWER, ADMINISTRATOR) in a single JSON call.\nEnables instant 1-click role switching in the React frontend during evaluation.",
+        "operationId": "get_demo_tokens_api_v1_auth_demo_tokens_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Demo Tokens Api V1 Auth Demo Tokens Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/brands/profiles": {
       "post": {
         "tags": [
@@ -345,6 +515,117 @@
                     "$ref": "#/components/schemas/BrandProfileRead"
                   },
                   "title": "Response List Brand Profiles Api V1 Brands Profiles Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brands/": {
+      "post": {
+        "tags": [
+          "Enterprise Brands Administration"
+        ],
+        "summary": "Create Brand Profile",
+        "description": "Creates a new brand profile specifying corporate tone, banned vocabulary, and privacy policies.",
+        "operationId": "create_brand_profile_api_v1_brands__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandProfileCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandProfileRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Enterprise Brands Administration"
+        ],
+        "summary": "List Brand Profiles",
+        "description": "Retrieves all active and archived brand profiles belonging to administrator's tenant workspace.",
+        "operationId": "list_brand_profiles_api_v1_brands__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BrandProfileRead"
+                  },
+                  "title": "Response List Brand Profiles Api V1 Brands  Get"
                 }
               }
             }
@@ -508,6 +789,55 @@
         }
       }
     },
+    "/api/v1/brands/{profile_id}": {
+      "get": {
+        "tags": [
+          "Enterprise Brands Administration"
+        ],
+        "summary": "Get Brand Profile",
+        "description": "Retrieves detailed brand profile governance specification by unique ID.",
+        "operationId": "get_brand_profile_api_v1_brands__profile_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandProfileRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/brands/profiles/{profile_id}/guidelines": {
       "post": {
         "tags": [
@@ -601,6 +931,116 @@
                     "$ref": "#/components/schemas/BrandGuidelineRead"
                   },
                   "title": "Response List Brand Guidelines Api V1 Brands Profiles  Profile Id  Guidelines Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brands/{profile_id}/guidelines": {
+      "post": {
+        "tags": [
+          "Enterprise Brands Administration"
+        ],
+        "summary": "Create Brand Guideline",
+        "description": "Adds a regulatory compliance directive clause with dense 1536-dim vector embedding.",
+        "operationId": "create_brand_guideline_api_v1_brands__profile_id__guidelines_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandGuidelineCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandGuidelineRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Enterprise Brands Administration"
+        ],
+        "summary": "List Brand Guidelines",
+        "description": "Lists all guideline directives indexed under the designated brand profile.",
+        "operationId": "list_brand_guidelines_api_v1_brands__profile_id__guidelines_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BrandGuidelineRead"
+                  },
+                  "title": "Response List Brand Guidelines Api V1 Brands  Profile Id  Guidelines Get"
                 }
               }
             }
@@ -1308,6 +1748,1779 @@
         }
       }
     },
+    "/api/v1/brand-profiles/profiles": {
+      "post": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Create Brand Profile",
+        "description": "Creates a new brand profile specifying corporate tone, banned vocabulary, and privacy policies.",
+        "operationId": "create_brand_profile_api_v1_brand_profiles_profiles_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandProfileCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandProfileRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "List Brand Profiles",
+        "description": "Retrieves all active and archived brand profiles belonging to administrator's tenant workspace.",
+        "operationId": "list_brand_profiles_api_v1_brand_profiles_profiles_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BrandProfileRead"
+                  },
+                  "title": "Response List Brand Profiles Api V1 Brand Profiles Profiles Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brand-profiles/": {
+      "post": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Create Brand Profile",
+        "description": "Creates a new brand profile specifying corporate tone, banned vocabulary, and privacy policies.",
+        "operationId": "create_brand_profile_api_v1_brand_profiles__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandProfileCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandProfileRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "List Brand Profiles",
+        "description": "Retrieves all active and archived brand profiles belonging to administrator's tenant workspace.",
+        "operationId": "list_brand_profiles_api_v1_brand_profiles__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BrandProfileRead"
+                  },
+                  "title": "Response List Brand Profiles Api V1 Brand Profiles  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brand-profiles/profiles/{profile_id}": {
+      "get": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Get Brand Profile",
+        "description": "Retrieves detailed brand profile governance specification by unique ID.",
+        "operationId": "get_brand_profile_api_v1_brand_profiles_profiles__profile_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandProfileRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Update Brand Profile",
+        "description": "Updates brand profile tone thresholds, vocabulary maps, or active status.",
+        "operationId": "update_brand_profile_api_v1_brand_profiles_profiles__profile_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandProfileUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandProfileRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Delete Brand Profile",
+        "description": "Removes a brand profile and cascades deletion of attached guidelines.",
+        "operationId": "delete_brand_profile_api_v1_brand_profiles_profiles__profile_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brand-profiles/{profile_id}": {
+      "get": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Get Brand Profile",
+        "description": "Retrieves detailed brand profile governance specification by unique ID.",
+        "operationId": "get_brand_profile_api_v1_brand_profiles__profile_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandProfileRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brand-profiles/profiles/{profile_id}/guidelines": {
+      "post": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Create Brand Guideline",
+        "description": "Adds a regulatory compliance directive clause with dense 1536-dim vector embedding.",
+        "operationId": "create_brand_guideline_api_v1_brand_profiles_profiles__profile_id__guidelines_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandGuidelineCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandGuidelineRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "List Brand Guidelines",
+        "description": "Lists all guideline directives indexed under the designated brand profile.",
+        "operationId": "list_brand_guidelines_api_v1_brand_profiles_profiles__profile_id__guidelines_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BrandGuidelineRead"
+                  },
+                  "title": "Response List Brand Guidelines Api V1 Brand Profiles Profiles  Profile Id  Guidelines Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brand-profiles/{profile_id}/guidelines": {
+      "post": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Create Brand Guideline",
+        "description": "Adds a regulatory compliance directive clause with dense 1536-dim vector embedding.",
+        "operationId": "create_brand_guideline_api_v1_brand_profiles__profile_id__guidelines_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandGuidelineCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandGuidelineRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "List Brand Guidelines",
+        "description": "Lists all guideline directives indexed under the designated brand profile.",
+        "operationId": "list_brand_guidelines_api_v1_brand_profiles__profile_id__guidelines_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BrandGuidelineRead"
+                  },
+                  "title": "Response List Brand Guidelines Api V1 Brand Profiles  Profile Id  Guidelines Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brand-profiles/guidelines/{guideline_id}": {
+      "get": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Get Brand Guideline",
+        "description": "Retrieves an individual guideline directive by ID.",
+        "operationId": "get_brand_guideline_api_v1_brand_profiles_guidelines__guideline_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "guideline_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Guideline Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandGuidelineRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Update Brand Guideline",
+        "description": "Updates a brand guideline clause, category, severity, or embedding.",
+        "operationId": "update_brand_guideline_api_v1_brand_profiles_guidelines__guideline_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "guideline_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Guideline Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandGuidelineUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandGuidelineRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Delete Brand Guideline",
+        "description": "Removes a brand guideline clause from the semantic retrieval vector space.",
+        "operationId": "delete_brand_guideline_api_v1_brand_profiles_guidelines__guideline_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "guideline_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Guideline Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brand-profiles/facts": {
+      "post": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Create Approved Fact",
+        "description": "Ingests an approved marketing fact substantiated with verification date, expiry window,\nprovenance source URL, legal excerpt, and 1536-dim semantic dense embedding.",
+        "operationId": "create_approved_fact_api_v1_brand_profiles_facts_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovedFactCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovedFactRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "List Approved Facts",
+        "description": "Lists approved facts with temporal validity metadata.",
+        "operationId": "list_approved_facts_api_v1_brand_profiles_facts_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "include_stale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include expired facts",
+              "default": true,
+              "title": "Include Stale"
+            },
+            "description": "Include expired facts"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApprovedFactRead"
+                  },
+                  "title": "Response List Approved Facts Api V1 Brand Profiles Facts Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brand-profiles/facts/{fact_id}": {
+      "get": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Get Approved Fact",
+        "description": "Retrieves an individual approved fact by unique ID.",
+        "operationId": "get_approved_fact_api_v1_brand_profiles_facts__fact_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "fact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Fact Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovedFactRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Update Approved Fact",
+        "description": "Updates approved fact verification/expiry dates, evidence excerpts, or active status.",
+        "operationId": "update_approved_fact_api_v1_brand_profiles_facts__fact_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "fact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Fact Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovedFactUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovedFactRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Delete Approved Fact",
+        "description": "Removes an approved fact claim from the grounding knowledge base.",
+        "operationId": "delete_approved_fact_api_v1_brand_profiles_facts__fact_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "fact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Fact Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brand-profiles/profiles/{profile_id}/privacy-gate": {
+      "get": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Get Privacy Gate Config",
+        "description": "Retrieves external LLM egress rules and data retention bounds for brand profile.",
+        "operationId": "get_privacy_gate_config_api_v1_brand_profiles_profiles__profile_id__privacy_gate_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyGateConfigSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Configure Privacy Gate",
+        "description": "Configures zero-trust privacy gate perimeter: controls external LLM egress clearance,\nwhitelisted enterprise AI providers, and regulatory retention limits.",
+        "operationId": "configure_privacy_gate_api_v1_brand_profiles_profiles__profile_id__privacy_gate_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivacyGateConfigUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyGateConfigSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brand-profiles/{brand_id}/assets": {
+      "post": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Register Approved Brand Asset in Catalog",
+        "description": "Registers an official approved brand asset (logo, typography lockup, official graphic)\nin the organization's catalog. These assets serve as the exclusive baseline for\nembedded visual comparison and distortion detection.",
+        "operationId": "register_brand_asset_api_v1_brand_profiles__brand_id__assets_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brand_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Brand Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovedBrandAssetCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovedBrandAssetRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "List Organization Approved Brand Assets",
+        "description": "Lists all officially approved brand assets registered for this profile.",
+        "operationId": "list_brand_assets_api_v1_brand_profiles__brand_id__assets_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brand_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Brand Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApprovedBrandAssetRead"
+                  },
+                  "title": "Response List Brand Assets Api V1 Brand Profiles  Brand Id  Assets Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brand-profiles/{brand_id}/assets/match": {
+      "post": {
+        "tags": [
+          "Brand Profiles & Governance"
+        ],
+        "summary": "Visual Inspection Against Approved Organizational Assets",
+        "description": "Inspects embedded raster images in submitted PDF/DOCX or direct image files\nand compares them strictly against the organization's catalog of approved brand assets.\nFlags:\n- UNAPPROVED_ASSET: Image not in approved catalog.\n- STRETCHED_OR_DISTORTED: Approved logo with distorted aspect ratio.\n- OUTDATED_LOGO: Matches an approved asset marked is_deprecated or expired.\n- APPROVED_MATCH: Fully compliant approved asset.",
+        "operationId": "match_document_assets_api_v1_brand_profiles__brand_id__assets_match_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brand_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Brand Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_match_document_assets_api_v1_brand_profiles__brand_id__assets_match_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetCatalogMatchingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/facts/": {
+      "get": {
+        "tags": [
+          "Approved Facts & Staleness Engine"
+        ],
+        "summary": "List Approved Facts",
+        "description": "Lists approved facts with temporal validity metadata.",
+        "operationId": "list_approved_facts_api_v1_facts__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brand_profile_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Brand Profile Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApprovedFactRead"
+                  },
+                  "title": "Response List Approved Facts Api V1 Facts  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Approved Facts & Staleness Engine"
+        ],
+        "summary": "Create Approved Fact",
+        "description": "Ingests a verified fact with strict expiry dates and 1536-dim vector embedding.",
+        "operationId": "create_approved_fact_api_v1_facts__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovedFactCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovedFactRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/facts/stale": {
+      "get": {
+        "tags": [
+          "Approved Facts & Staleness Engine"
+        ],
+        "summary": "List Stale Facts",
+        "description": "Retrieves all expired facts triggering automated re-verification sweeps.",
+        "operationId": "list_stale_facts_api_v1_facts_stale_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ApprovedFactRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Stale Facts Api V1 Facts Stale Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/facts/search/semantic": {
+      "post": {
+        "tags": [
+          "Approved Facts & Staleness Engine"
+        ],
+        "summary": "Search Facts Semantic",
+        "description": "HNSW-accelerated semantic vector search for verified facts.",
+        "operationId": "search_facts_semantic_api_v1_facts_search_semantic_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20,
+              "minimum": 1,
+              "default": 5,
+              "title": "Limit"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "title": "Query Embedding"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApprovedFactRead"
+                  },
+                  "title": "Response Search Facts Semantic Api V1 Facts Search Semantic Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/facts/{fact_id}/blast-radius": {
+      "post": {
+        "tags": [
+          "Approved Facts & Staleness Engine"
+        ],
+        "summary": "Trigger Reverse Blast-Radius Traversal on Fact",
+        "description": "Traverses the bi-directional citation knowledge graph in O(1) indexed time to locate\nall previously APPROVED collateral citing or depending on this fact. Automatically flags\naffected submissions as needing re-verification and atomically enqueues transactional outbox events.",
+        "operationId": "trigger_fact_blast_radius_api_v1_facts__fact_id__blast_radius_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "fact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Fact Id"
+            }
+          },
+          {
+            "name": "trigger_reason",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "EXPIRED",
+              "title": "Trigger Reason"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlastRadiusTriggerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/findings/": {
+      "post": {
+        "tags": [
+          "Findings & Triage"
+        ],
+        "summary": "Create Finding",
+        "description": "Ingests finding with automated tri-state triage and stochastic anti-bias sampling.",
+        "operationId": "create_finding_api_v1_findings__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindingCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/findings/by-revision/{revision_id}": {
+      "get": {
+        "tags": [
+          "Findings & Triage"
+        ],
+        "summary": "List Findings By Revision",
+        "description": "Retrieves all detection findings associated with a specific immutable revision.",
+        "operationId": "list_findings_by_revision_api_v1_findings_by_revision__revision_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "revision_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Revision Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FindingRead"
+                  },
+                  "title": "Response List Findings By Revision Api V1 Findings By Revision  Revision Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/findings/{finding_id}/action": {
+      "patch": {
+        "tags": [
+          "Findings & Triage"
+        ],
+        "summary": "Update Creator Action",
+        "description": "Updates author action (ACCEPTED, REJECTED, EDITED) in response to a finding.",
+        "operationId": "update_creator_action_api_v1_findings__finding_id__action_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "finding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Finding Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindingUpdateAction"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workflow/{submission_id}/findings/{finding_id}/resolve": {
       "post": {
         "tags": [
@@ -1332,6 +3545,65 @@
               "title": "Submission Id"
             }
           },
+          {
+            "name": "finding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Finding Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindingResolutionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingResolutionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflow/findings/{finding_id}/resolve": {
+      "post": {
+        "tags": [
+          "Workflow Lifecycle"
+        ],
+        "summary": "Creator Suggestion Resolution by Finding ID",
+        "description": "Convenience endpoint allowing frontend to resolve a finding directly by finding_id.",
+        "operationId": "resolve_finding_by_id_api_v1_workflow_findings__finding_id__resolve_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
           {
             "name": "finding_id",
             "in": "path",
@@ -1590,6 +3862,65 @@
               "title": "Submission Id"
             }
           },
+          {
+            "name": "finding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Finding Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindingResolutionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingResolutionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/findings/{finding_id}/resolve": {
+      "post": {
+        "tags": [
+          "Workflow, Revision Engine & Human Review"
+        ],
+        "summary": "Creator Suggestion Resolution by Finding ID",
+        "description": "Convenience endpoint allowing frontend to resolve a finding directly by finding_id.",
+        "operationId": "resolve_finding_by_id_api_v1_submissions_findings__finding_id__resolve_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
           {
             "name": "finding_id",
             "in": "path",
@@ -1924,23 +4255,13 @@
           "Submissions, Ingestion & Revision DAG"
         ],
         "summary": "Create Raw Submission",
-        "description": "Creates a submission from structured payload establishes Genesis revision (v1).",
+        "description": "Zero-Friction Dual-Mode Submission Endpoint.\nCleanly supports BOTH:\n1. application/json: {\"title\": \"...\", \"content_text\": \"...\", \"brand_profile_id\": \"...\"}\n2. multipart/form-data: file upload (PDF/DOCX/TXT/MD) + optional form fields.\nDefaulting to the seeded primary brand profile if brand_profile_id is omitted!",
         "operationId": "create_raw_submission_api_v1_submissions__post",
         "security": [
           {
             "HTTPBearer": []
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SubmissionCreate"
-              }
-            }
-          }
-        },
         "responses": {
           "201": {
             "description": "Successful Response",
@@ -1948,16 +4269,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SubmissionRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -2043,6 +4354,35 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/submissions/analyze-instant": {
+      "post": {
+        "tags": [
+          "Submissions, Ingestion & Revision DAG"
+        ],
+        "summary": "1-Step Submission Creation & Automated 4-Stage Intelligence Triage",
+        "description": "1-step convenience endpoint for the frontend that accepts text or a PDF/DOCX file,\ncreates the submission, runs the 4-stage analysis + epistemic triage,\nand returns the submission + all findings + triage summary in a single HTTP call.",
+        "operationId": "submit_and_analyze_instant_api_v1_submissions_analyze_instant_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Submit And Analyze Instant Api V1 Submissions Analyze Instant Post"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/submissions/{submission_id}": {
@@ -2381,15 +4721,38 @@
         "summary": "Execute 4-Stage Intelligence Pipeline on Revision",
         "description": "Executes the 4-stage intelligence pipeline on an immutable document revision:\n1. Deterministic Rule Engine (O(N) Aho-Corasick, Readability, Passive Voice, Caps Abuse).\n2. Temporal Fact & Hybrid RAG Retrieval Engine (RRF, Staleness, Missing Evidence).\n3. Zero-Trust Privacy Gate & Circuit-Breaker LLM Router (PII Scrubber, Cache).\n4. Calibrated Confidence Triage & 15% Stochastic Automation-Bias Safeguard.",
         "operationId": "run_analysis_pipeline_api_v1_analysis__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-AI-Plugin-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Ai-Plugin-Id"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AnalysisPipelineRunRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -2412,12 +4775,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/analysis/run": {
@@ -2428,15 +4786,38 @@
         "summary": "Execute 4-Stage Intelligence Pipeline on Revision",
         "description": "Executes the 4-stage intelligence pipeline on an immutable document revision:\n1. Deterministic Rule Engine (O(N) Aho-Corasick, Readability, Passive Voice, Caps Abuse).\n2. Temporal Fact & Hybrid RAG Retrieval Engine (RRF, Staleness, Missing Evidence).\n3. Zero-Trust Privacy Gate & Circuit-Breaker LLM Router (PII Scrubber, Cache).\n4. Calibrated Confidence Triage & 15% Stochastic Automation-Bias Safeguard.",
         "operationId": "run_analysis_pipeline_api_v1_analysis_run_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-AI-Plugin-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Ai-Plugin-Id"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AnalysisPipelineRunRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -2459,12 +4840,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/analysis/submissions/{submission_id}/run": {
@@ -2499,6 +4875,22 @@
               "type": "string",
               "default": "Azure OpenAI",
               "title": "Requested Provider"
+            }
+          },
+          {
+            "name": "X-AI-Plugin-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Ai-Plugin-Id"
             }
           }
         ],
@@ -2695,6 +5087,53 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AnalysisEngineStatusResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/analysis/preflight-inline": {
+      "post": {
+        "tags": [
+          "Intelligence Analysis & Triage"
+        ],
+        "summary": "Sub-10ms Live-Typing Inline Co-Pilot Preflight",
+        "description": "Sub-10ms stateless, zero-DB-write endpoint powered by L1 BrandAutomatonCache.\nEvaluates real-time keystroke snippets against pre-compiled Aho-Corasick state machines\nand the Adversarial Critic false-positive filter, returning span highlights and suggestions in <5ms.",
+        "operationId": "preflight_inline_api_v1_analysis_preflight_inline_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InlinePreflightRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InlinePreflightResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -2933,61 +5372,14 @@
         }
       }
     },
-    "/api/v1/brand-profiles/": {
+    "/api/v1/governance/enforce-retention": {
       "post": {
         "tags": [
-          "Brand Profiles & Governance"
+          "Cryptographic Governance & Audit Verification"
         ],
-        "summary": "Create Brand Profile",
-        "description": "Creates a new brand profile with configurable tone, banned terms, and privacy gate.",
-        "operationId": "create_brand_profile_api_v1_brand_profiles__post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BrandProfileCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BrandProfileRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/brand-profiles/{profile_id}": {
-      "get": {
-        "tags": [
-          "Brand Profiles & Governance"
-        ],
-        "summary": "Get Brand Profile",
-        "description": "Retrieves brand profile governance specification by ID.",
-        "operationId": "get_brand_profile_api_v1_brand_profiles__profile_id__get",
+        "summary": "Execute Limited-Retention TTL Policy Reaper",
+        "description": "Limited-Retention TTL Reaper:\nScans for submissions older than brand retention policy (e.g. 30 days).\nCryptographically shreds raw text while preserving finding counts and audit logs.\nRecords RETENTION_POLICY_PURGED events in the cryptographic ledger.",
+        "operationId": "enforce_data_retention_api_v1_governance_enforce_retention_post",
         "security": [
           {
             "HTTPBearer": []
@@ -2995,229 +5387,45 @@
         ],
         "parameters": [
           {
-            "name": "profile_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Profile Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BrandProfileRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/brand-profiles/{profile_id}/guidelines": {
-      "post": {
-        "tags": [
-          "Brand Profiles & Governance"
-        ],
-        "summary": "Add Brand Guideline",
-        "description": "Adds a regulatory or brand directive clause with 1536-dim vector embedding.",
-        "operationId": "add_brand_guideline_api_v1_brand_profiles__profile_id__guidelines_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "profile_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Profile Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BrandGuidelineCreate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BrandGuidelineRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/facts/": {
-      "post": {
-        "tags": [
-          "Approved Facts & Staleness Engine"
-        ],
-        "summary": "Create Approved Fact",
-        "description": "Ingests a verified fact with strict expiry dates and 1536-dim vector embedding.",
-        "operationId": "create_approved_fact_api_v1_facts__post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApprovedFactCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApprovedFactRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/facts/stale": {
-      "get": {
-        "tags": [
-          "Approved Facts & Staleness Engine"
-        ],
-        "summary": "List Stale Facts",
-        "description": "Retrieves all expired facts triggering automated re-verification sweeps.",
-        "operationId": "list_stale_facts_api_v1_facts_stale_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/ApprovedFactRead"
-                  },
-                  "type": "array",
-                  "title": "Response List Stale Facts Api V1 Facts Stale Get"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/facts/search/semantic": {
-      "post": {
-        "tags": [
-          "Approved Facts & Staleness Engine"
-        ],
-        "summary": "Search Facts Semantic",
-        "description": "HNSW-accelerated semantic vector search for verified facts.",
-        "operationId": "search_facts_semantic_api_v1_facts_search_semantic_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "limit",
+            "name": "retention_days",
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "maximum": 20,
-              "minimum": 1,
-              "default": 5,
-              "title": "Limit"
-            }
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Override TTL retention window in days",
+              "title": "Retention Days"
+            },
+            "description": "Override TTL retention window in days"
+          },
+          {
+            "name": "dry_run",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Simulate purge without mutating records",
+              "default": false,
+              "title": "Dry Run"
+            },
+            "description": "Simulate purge without mutating records"
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "array",
-                "items": {
-                  "type": "number"
-                },
-                "title": "Query Embedding"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ApprovedFactRead"
-                  },
-                  "title": "Response Search Facts Semantic Api V1 Facts Search Semantic Post"
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Enforce Data Retention Api V1 Governance Enforce Retention Post"
                 }
               }
             }
@@ -3235,61 +5443,14 @@
         }
       }
     },
-    "/api/v1/findings/": {
-      "post": {
-        "tags": [
-          "Findings & Triage"
-        ],
-        "summary": "Create Finding",
-        "description": "Ingests finding with automated tri-state triage and stochastic anti-bias sampling.",
-        "operationId": "create_finding_api_v1_findings__post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FindingCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FindingRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/findings/by-revision/{revision_id}": {
+    "/api/v1/governance/blast-radius": {
       "get": {
         "tags": [
-          "Findings & Triage"
+          "Cryptographic Governance & Audit Verification"
         ],
-        "summary": "List Findings By Revision",
-        "description": "Retrieves all detection findings associated with a specific immutable revision.",
-        "operationId": "list_findings_by_revision_api_v1_findings_by_revision__revision_id__get",
+        "summary": "Enterprise Reverse Blast-Radius Knowledge Graph Diagnostic",
+        "description": "Retrieves enterprise-wide citation knowledge graph diagnostic metrics,\nincluding stale fact count, impacted approved collateral, and transactional outbox statuses.",
+        "operationId": "get_enterprise_blast_radius_api_v1_governance_blast_radius_get",
         "security": [
           {
             "HTTPBearer": []
@@ -3297,14 +5458,23 @@
         ],
         "parameters": [
           {
-            "name": "revision_id",
-            "in": "path",
-            "required": true,
+            "name": "brand_profile_id",
+            "in": "query",
+            "required": false,
             "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Revision Id"
-            }
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional brand profile filter",
+              "title": "Brand Profile Id"
+            },
+            "description": "Optional brand profile filter"
           }
         ],
         "responses": {
@@ -3313,70 +5483,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/FindingRead"
-                  },
-                  "title": "Response List Findings By Revision Api V1 Findings By Revision  Revision Id  Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/findings/{finding_id}/action": {
-      "patch": {
-        "tags": [
-          "Findings & Triage"
-        ],
-        "summary": "Update Creator Action",
-        "description": "Updates author action (ACCEPTED, REJECTED, EDITED) in response to a finding.",
-        "operationId": "update_creator_action_api_v1_findings__finding_id__action_patch",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "finding_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Finding Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FindingUpdateAction"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FindingRead"
+                  "$ref": "#/components/schemas/EnterpriseBlastRadiusOverview"
                 }
               }
             }
@@ -3485,6 +5592,579 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/api/v1/webhooks/outbox/flush": {
+      "post": {
+        "tags": [
+          "Transactional Outbox & Webhooks"
+        ],
+        "summary": "Flush Outbox Queue & Dispatch Webhooks",
+        "description": "Executes an outbox dispatcher sweep, attempting delivery of all PENDING or\nFAILED_RETRYING webhook events whose exponential backoff threshold has arrived.",
+        "operationId": "flush_outbox_queue_api_v1_webhooks_outbox_flush_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutboxFlushResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/webhooks/dlq/{event_id}/replay": {
+      "post": {
+        "tags": [
+          "Transactional Outbox & Webhooks"
+        ],
+        "summary": "Replay Quarantined Dead-Letter Queue (DLQ) Event",
+        "description": "Requeues a permanently failed webhook event quarantined in DEAD_LETTER_QUEUE,\nresetting its attempt counter and triggering an immediate redelivery attempt.",
+        "operationId": "replay_dlq_event_api_v1_webhooks_dlq__event_id__replay_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutboxEventRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/webhooks/subscriptions": {
+      "post": {
+        "tags": [
+          "Transactional Outbox & Webhooks"
+        ],
+        "summary": "Register Webhook Subscription",
+        "description": "Registers a new tenant webhook callback URI with shared secret for HMAC-SHA256 verification.",
+        "operationId": "create_webhook_subscription_api_v1_webhooks_subscriptions_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookSubscriptionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookSubscriptionRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Transactional Outbox & Webhooks"
+        ],
+        "summary": "List Registered Webhook Subscriptions",
+        "description": "Retrieves all active webhook subscriptions for tenant workspace.",
+        "operationId": "list_webhook_subscriptions_api_v1_webhooks_subscriptions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brand_profile_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Brand Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WebhookSubscriptionRead"
+                  },
+                  "title": "Response List Webhook Subscriptions Api V1 Webhooks Subscriptions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/webhooks/outbox": {
+      "get": {
+        "tags": [
+          "Transactional Outbox & Webhooks"
+        ],
+        "summary": "Inspect Outbox Webhook Events",
+        "description": "Inspects pending, delivered, or DLQ outbox events.",
+        "operationId": "list_outbox_events_api_v1_webhooks_outbox_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "delivery_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Delivery Status"
+            }
+          },
+          {
+            "name": "brand_profile_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Brand Profile Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OutboxEventRead"
+                  },
+                  "title": "Response List Outbox Events Api V1 Webhooks Outbox Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/{submission_id}/certificate": {
+      "get": {
+        "tags": [
+          "Publication Attestation & Cryptographic Passports"
+        ],
+        "summary": "Retrieve Publication Attestation Clearance Passport",
+        "description": "Retrieves the signed cryptographic publication clearance certificate for an approved submission.\nContains document SHA-256 hash, Merkle root of cited facts/guidelines, and validity window.",
+        "operationId": "get_submission_publication_certificate_api_v1__submission_id__certificate_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationAttestationCertificateRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{submission_id}/certificate": {
+      "get": {
+        "tags": [
+          "Publication Attestation & Cryptographic Passports"
+        ],
+        "summary": "Retrieve Publication Attestation Clearance Passport",
+        "description": "Retrieves the signed cryptographic publication clearance certificate for an approved submission.\nContains document SHA-256 hash, Merkle root of cited facts/guidelines, and validity window.",
+        "operationId": "get_submission_publication_certificate_api_v1_submissions__submission_id__certificate_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationAttestationCertificateRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/verify": {
+      "post": {
+        "tags": [
+          "Publication Attestation & Cryptographic Passports"
+        ],
+        "summary": "Ultra-Fast <1ms CMS Publication Gatekeeper Verification",
+        "description": "Sub-millisecond verification endpoint for external CMS publishing pipelines:\n1. Verifies HMAC-SHA256 signature sealing canonical certificate contents.\n2. Validates document SHA-256 hash matches the approved revision (zero post-approval tampering).\n3. Confirms temporal certificate validity window has not elapsed.\n4. Evaluates dynamic ground truth: confirms none of the cited facts have expired or been revoked.",
+        "operationId": "verify_publication_certificate_gatekeeper_api_v1_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttestationVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttestationVerifyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/attestation/{submission_id}/certificate": {
+      "get": {
+        "tags": [
+          "Publication Attestation & Cryptographic Passports"
+        ],
+        "summary": "Retrieve Publication Attestation Clearance Passport",
+        "description": "Retrieves the signed cryptographic publication clearance certificate for an approved submission.\nContains document SHA-256 hash, Merkle root of cited facts/guidelines, and validity window.",
+        "operationId": "get_submission_publication_certificate_api_v1_attestation__submission_id__certificate_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationAttestationCertificateRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/attestation/submissions/{submission_id}/certificate": {
+      "get": {
+        "tags": [
+          "Publication Attestation & Cryptographic Passports"
+        ],
+        "summary": "Retrieve Publication Attestation Clearance Passport",
+        "description": "Retrieves the signed cryptographic publication clearance certificate for an approved submission.\nContains document SHA-256 hash, Merkle root of cited facts/guidelines, and validity window.",
+        "operationId": "get_submission_publication_certificate_api_v1_attestation_submissions__submission_id__certificate_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationAttestationCertificateRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/attestation/verify": {
+      "post": {
+        "tags": [
+          "Publication Attestation & Cryptographic Passports"
+        ],
+        "summary": "Ultra-Fast <1ms CMS Publication Gatekeeper Verification",
+        "description": "Sub-millisecond verification endpoint for external CMS publishing pipelines:\n1. Verifies HMAC-SHA256 signature sealing canonical certificate contents.\n2. Validates document SHA-256 hash matches the approved revision (zero post-approval tampering).\n3. Confirms temporal certificate validity window has not elapsed.\n4. Evaluates dynamic ground truth: confirms none of the cited facts have expired or been revoked.",
+        "operationId": "verify_publication_certificate_gatekeeper_api_v1_attestation_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttestationVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttestationVerifyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/": {
@@ -3735,6 +6415,11 @@
           "automation_bias_audits_injected": {
             "type": "integer",
             "title": "Automation Bias Audits Injected"
+          },
+          "suppressed_false_positives_count": {
+            "type": "integer",
+            "title": "Suppressed False Positives Count",
+            "default": 0
           },
           "processing_duration_ms": {
             "type": "number",
@@ -4487,6 +7172,150 @@
         "title": "AssetMatchStatus",
         "description": "Visual compliance status against the organization's approved catalog."
       },
+      "AttestationVerifyRequest": {
+        "properties": {
+          "certificate_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Certificate Id",
+            "description": "UUID of the publication attestation certificate"
+          },
+          "document_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Text",
+            "description": "Plaintext content to hash and verify against clearance"
+          },
+          "document_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Content",
+            "description": "Alias for document_text"
+          },
+          "document_sha256_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Sha256 Hash",
+            "description": "Pre-computed SHA-256 digest of document content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "certificate_id"
+        ],
+        "title": "AttestationVerifyRequest",
+        "description": "Payload for ultra-fast <1ms CMS Gatekeeper verification endpoint."
+      },
+      "AttestationVerifyResponse": {
+        "properties": {
+          "is_valid_for_publish": {
+            "type": "boolean",
+            "title": "Is Valid For Publish"
+          },
+          "is_valid": {
+            "type": "boolean",
+            "title": "Is Valid",
+            "default": true
+          },
+          "certificate_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Certificate Id"
+          },
+          "submission_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submission Id"
+          },
+          "verification_status": {
+            "type": "string",
+            "title": "Verification Status",
+            "description": "One of: VALID, TAMPERED_HASH_MISMATCH, EXPIRED_FACT_REVOKED, SIGNATURE_INVALID, CERTIFICATE_NOT_FOUND"
+          },
+          "verification_code": {
+            "type": "string",
+            "title": "Verification Code",
+            "default": "VALID"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          },
+          "latency_ms": {
+            "type": "number",
+            "title": "Latency Ms"
+          },
+          "merkle_root": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merkle Root"
+          },
+          "cited_facts_count": {
+            "type": "integer",
+            "title": "Cited Facts Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_valid_for_publish",
+          "certificate_id",
+          "verification_status",
+          "reason",
+          "checked_at",
+          "latency_ms"
+        ],
+        "title": "AttestationVerifyResponse",
+        "description": "Ultra-fast verification response for external CMS gatekeepers."
+      },
       "AuditChainVerificationResult": {
         "properties": {
           "is_valid": {
@@ -4588,6 +7417,119 @@
           "timestamp"
         ],
         "title": "AuditLedgerRead"
+      },
+      "BlastRadiusTriggerResponse": {
+        "properties": {
+          "fact_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Fact Id"
+          },
+          "fact_statement": {
+            "type": "string",
+            "title": "Fact Statement"
+          },
+          "expiry_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Date"
+          },
+          "trigger_reason": {
+            "type": "string",
+            "title": "Trigger Reason",
+            "default": "EXPIRED"
+          },
+          "brand_profile_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Profile Id"
+          },
+          "affected_submissions_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Affected Submissions Count",
+            "description": "Total previously APPROVED submissions affected"
+          },
+          "affected_pages": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Affected Pages",
+            "description": "Estimated total pages impacted across enterprise collateral"
+          },
+          "affected_citations_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Affected Citations Count",
+            "description": "Total citation dependency edges traversed"
+          },
+          "exact_character_spans": {
+            "items": {
+              "$ref": "#/components/schemas/CharacterSpanCitation"
+            },
+            "type": "array",
+            "title": "Exact Character Spans"
+          },
+          "outbox_event_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outbox Event Id"
+          },
+          "outbox_delivery_status": {
+            "type": "string",
+            "title": "Outbox Delivery Status",
+            "default": "PENDING"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fact_id",
+          "fact_statement",
+          "affected_submissions_count",
+          "affected_pages",
+          "affected_citations_count"
+        ],
+        "title": "BlastRadiusTriggerResponse",
+        "description": "Enterprise Blast-Radius calculation and outbox dispatch result.\nReturned when a fact expires, is revoked, or triggers retroactive re-verification."
+      },
+      "Body_match_document_assets_api_v1_brand_profiles__brand_id__assets_match_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_match_document_assets_api_v1_brand_profiles__brand_id__assets_match_post"
       },
       "Body_match_document_assets_api_v1_brands__brand_id__assets_match_post": {
         "properties": {
@@ -5083,6 +8025,60 @@
         "title": "CategorySeverityCount",
         "description": "Multi-dimensional aggregation cell from PostgreSQL GROUP BY CUBE(issue_category, severity)."
       },
+      "CharacterSpanCitation": {
+        "properties": {
+          "submission_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Submission Id"
+          },
+          "submission_title": {
+            "type": "string",
+            "title": "Submission Title"
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Revision Id"
+          },
+          "revision_number": {
+            "type": "integer",
+            "title": "Revision Number"
+          },
+          "finding_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Finding Id"
+          },
+          "start_offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Start Offset"
+          },
+          "end_offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "End Offset"
+          },
+          "citation_hash": {
+            "type": "string",
+            "title": "Citation Hash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "submission_id",
+          "submission_title",
+          "revision_id",
+          "revision_number",
+          "finding_id",
+          "start_offset",
+          "end_offset",
+          "citation_hash"
+        ],
+        "title": "CharacterSpanCitation",
+        "description": "Granular character-level citation span affected by fact mutation or staleness."
+      },
       "CreatorAction": {
         "type": "string",
         "enum": [
@@ -5228,6 +8224,77 @@
           "diff_summary"
         ],
         "title": "DocumentRevisionRead"
+      },
+      "EnterpriseBlastRadiusOverview": {
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Workspace Id"
+          },
+          "brand_profile_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Profile Id"
+          },
+          "total_citation_edges": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Citation Edges"
+          },
+          "total_stale_facts": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Stale Facts"
+          },
+          "total_affected_approved_submissions": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Affected Approved Submissions"
+          },
+          "total_outbox_events_pending": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Outbox Events Pending"
+          },
+          "total_outbox_events_delivered": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Outbox Events Delivered"
+          },
+          "total_outbox_events_dlq": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Outbox Events Dlq"
+          },
+          "recent_events": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Recent Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workspace_id",
+          "total_citation_edges",
+          "total_stale_facts",
+          "total_affected_approved_submissions",
+          "total_outbox_events_pending",
+          "total_outbox_events_delivered",
+          "total_outbox_events_dlq"
+        ],
+        "title": "EnterpriseBlastRadiusOverview",
+        "description": "Executive enterprise-wide citation graph & blast radius diagnostic overview."
       },
       "EvaluationBenchmarkResponse": {
         "properties": {
@@ -5454,6 +8521,28 @@
             "title": "Is Automation Bias Audit",
             "default": false
           },
+          "epistemic_uncertainty_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epistemic Uncertainty Score"
+          },
+          "counterfactual_risk_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counterfactual Risk Summary"
+          },
           "revision_id": {
             "type": "string",
             "format": "uuid",
@@ -5548,6 +8637,28 @@
             "type": "boolean",
             "title": "Is Automation Bias Audit",
             "default": false
+          },
+          "epistemic_uncertainty_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epistemic Uncertainty Score"
+          },
+          "counterfactual_risk_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counterfactual Risk Summary"
           },
           "id": {
             "type": "string",
@@ -5670,6 +8781,18 @@
             ],
             "title": "Comment",
             "description": "Optional rationale or justification from author"
+          },
+          "expected_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Version",
+            "description": "Expected submission version_number for optimistic concurrency control"
           }
         },
         "type": "object",
@@ -5880,6 +9003,51 @@
             "title": "Category Severity Cube",
             "description": "Dimensional breakdown from GROUP BY CUBE"
           },
+          "category_chart_data": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Category Chart Data",
+            "description": "Recharts <BarChart> dataset with { name, value, count, fill }"
+          },
+          "triage_pie_data": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Triage Pie Data",
+            "description": "Recharts <PieChart> dataset with { name, value, count, fill }"
+          },
+          "severity_breakdown": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Severity Breakdown",
+            "description": "Recharts severity distribution with { name, value, count, fill }"
+          },
+          "review_trend_series": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Review Trend Series",
+            "description": "Recharts <LineChart> dataset with { name, value, count, fill }"
+          },
+          "summary_kpis": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Summary Kpis",
+            "description": "Pre-calculated dashboard summary KPI cards with { name, value, count, fill }"
+          },
           "recharts_category_bar": {
             "items": {
               "$ref": "#/components/schemas/RechartsCategoryBar"
@@ -6003,6 +9171,213 @@
         "title": "InlineCommentInput",
         "description": "Granular reviewer annotation on a specific span or finding."
       },
+      "InlinePreflightRequest": {
+        "properties": {
+          "brand_profile_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Brand Profile Id",
+            "description": "Target brand profile defining terminology & rules"
+          },
+          "text_snippet": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text Snippet",
+            "description": "Single sentence or paragraph typed in real time"
+          },
+          "cursor_offset": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor Offset",
+            "description": "Current cursor offset within snippet"
+          }
+        },
+        "type": "object",
+        "required": [
+          "brand_profile_id",
+          "text_snippet"
+        ],
+        "title": "InlinePreflightRequest",
+        "description": "Stateless payload for sub-10ms inline typing preflight co-pilot."
+      },
+      "InlinePreflightResponse": {
+        "properties": {
+          "latency_ms": {
+            "type": "number",
+            "title": "Latency Ms"
+          },
+          "clean_pass": {
+            "type": "boolean",
+            "title": "Clean Pass"
+          },
+          "character_count": {
+            "type": "integer",
+            "title": "Character Count"
+          },
+          "span_highlights": {
+            "items": {
+              "$ref": "#/components/schemas/InlineSpanHighlight"
+            },
+            "type": "array",
+            "title": "Span Highlights"
+          },
+          "suggested_replacements_count": {
+            "type": "integer",
+            "title": "Suggested Replacements Count",
+            "default": 0
+          },
+          "is_compliant": {
+            "type": "boolean",
+            "title": "Is Compliant",
+            "default": true
+          },
+          "total_spans_detected": {
+            "type": "integer",
+            "title": "Total Spans Detected",
+            "default": 0
+          },
+          "spans": {
+            "items": {
+              "$ref": "#/components/schemas/InlineSpanHighlight"
+            },
+            "type": "array",
+            "title": "Spans"
+          }
+        },
+        "type": "object",
+        "required": [
+          "latency_ms",
+          "clean_pass",
+          "character_count"
+        ],
+        "title": "InlinePreflightResponse",
+        "description": "Sub-10ms synchronous response for live-typing inline co-pilot."
+      },
+      "InlineSpanHighlight": {
+        "properties": {
+          "start_offset": {
+            "type": "integer",
+            "title": "Start Offset"
+          },
+          "end_offset": {
+            "type": "integer",
+            "title": "End Offset"
+          },
+          "matched_term": {
+            "type": "string",
+            "title": "Matched Term"
+          },
+          "issue_category": {
+            "$ref": "#/components/schemas/FindingCategory"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/SeverityLevel"
+          },
+          "explanation_reason": {
+            "type": "string",
+            "title": "Explanation Reason"
+          },
+          "suggested_replacement": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Replacement"
+          },
+          "confidence_score": {
+            "type": "number",
+            "title": "Confidence Score",
+            "default": 1.0
+          },
+          "epistemic_uncertainty_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epistemic Uncertainty Score"
+          },
+          "counterfactual_risk_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counterfactual Risk Summary"
+          },
+          "start_char": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Char"
+          },
+          "end_char": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Char"
+          },
+          "flagged_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flagged Text"
+          },
+          "suggested_correction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Correction"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start_offset",
+          "end_offset",
+          "matched_term",
+          "issue_category",
+          "severity",
+          "explanation_reason"
+        ],
+        "title": "InlineSpanHighlight",
+        "description": "Real-time token span highlight for interactive inline editor."
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -6021,6 +9396,128 @@
           "password"
         ],
         "title": "LoginRequest"
+      },
+      "OutboxEventRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "brand_profile_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Brand Profile Id"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "payload_json": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload Json"
+          },
+          "hmac_signature": {
+            "type": "string",
+            "title": "Hmac Signature"
+          },
+          "delivery_status": {
+            "type": "string",
+            "title": "Delivery Status"
+          },
+          "attempt_count": {
+            "type": "integer",
+            "title": "Attempt Count"
+          },
+          "next_retry_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Retry At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "delivered_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivered At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "brand_profile_id",
+          "event_type",
+          "payload_json",
+          "hmac_signature",
+          "delivery_status",
+          "attempt_count",
+          "created_at"
+        ],
+        "title": "OutboxEventRead",
+        "description": "Outbox event record detailing delivery status and retry schedule."
+      },
+      "OutboxFlushResponse": {
+        "properties": {
+          "processed_count": {
+            "type": "integer",
+            "title": "Processed Count"
+          },
+          "delivered_count": {
+            "type": "integer",
+            "title": "Delivered Count"
+          },
+          "failed_retrying_count": {
+            "type": "integer",
+            "title": "Failed Retrying Count"
+          },
+          "dlq_count": {
+            "type": "integer",
+            "title": "Dlq Count"
+          },
+          "duration_ms": {
+            "type": "number",
+            "title": "Duration Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "processed_count",
+          "delivered_count",
+          "failed_retrying_count",
+          "dlq_count",
+          "duration_ms"
+        ],
+        "title": "OutboxFlushResponse",
+        "description": "Summary of outbox events flushed to external webhooks."
       },
       "PrivacyGateConfigSchema": {
         "properties": {
@@ -6115,6 +9612,101 @@
         "type": "object",
         "title": "PrivacyGateConfigUpdate"
       },
+      "PublicationAttestationCertificateRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "certificate_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Certificate Id"
+          },
+          "submission_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Submission Id"
+          },
+          "approved_revision_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Approved Revision Id"
+          },
+          "document_sha256_hash": {
+            "type": "string",
+            "title": "Document Sha256 Hash"
+          },
+          "reviewer_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Reviewer Id"
+          },
+          "brand_profile_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Brand Profile Id"
+          },
+          "merkle_root_of_cited_facts_and_guidelines": {
+            "type": "string",
+            "title": "Merkle Root Of Cited Facts And Guidelines"
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Issued At"
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Valid Until"
+          },
+          "cryptographic_signature": {
+            "type": "string",
+            "title": "Cryptographic Signature"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "ACTIVE"
+          },
+          "metadata_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata Json"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "submission_id",
+          "approved_revision_id",
+          "document_sha256_hash",
+          "reviewer_id",
+          "brand_profile_id",
+          "merkle_root_of_cited_facts_and_guidelines",
+          "issued_at",
+          "valid_until",
+          "cryptographic_signature"
+        ],
+        "title": "PublicationAttestationCertificateRead",
+        "description": "Immutable Cryptographic Clearance Certificate returned upon submission approval."
+      },
       "RechartsCategoryBar": {
         "properties": {
           "category": {
@@ -6132,6 +9724,19 @@
             "minimum": 0.0,
             "title": "Count",
             "description": "Total occurrences"
+          },
+          "value": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Value",
+            "description": "Alias for count for Recharts direct binding",
+            "default": 0
+          },
+          "fill": {
+            "type": "string",
+            "title": "Fill",
+            "description": "Category bar fill color",
+            "default": "#8B5CF6"
           },
           "CRITICAL": {
             "type": "integer",
@@ -6178,6 +9783,26 @@
             "title": "Date",
             "description": "Date (YYYY-MM-DD)"
           },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Axis label alias for date",
+            "default": ""
+          },
+          "value": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Value",
+            "description": "Total reviews count for Recharts",
+            "default": 0
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Count",
+            "description": "Total reviews count",
+            "default": 0
+          },
           "approved": {
             "type": "integer",
             "minimum": 0.0,
@@ -6198,6 +9823,12 @@
             "title": "Total Reviews",
             "description": "Total review actions count",
             "default": 0
+          },
+          "fill": {
+            "type": "string",
+            "title": "Fill",
+            "description": "Trendline color",
+            "default": "#6366F1"
           }
         },
         "type": "object",
@@ -6219,6 +9850,13 @@
             "minimum": 0.0,
             "title": "Value",
             "description": "Finding count in this bucket"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Count",
+            "description": "Count alias",
+            "default": 0
           },
           "fill": {
             "type": "string",
@@ -6484,6 +10122,24 @@
           "lines_removed": {
             "type": "integer",
             "title": "Lines Removed"
+          },
+          "token_diffs": {
+            "items": {
+              "$ref": "#/components/schemas/TokenDiffChunk"
+            },
+            "type": "array",
+            "title": "Token Diffs",
+            "readOnly": true
+          },
+          "total_additions": {
+            "type": "integer",
+            "title": "Total Additions",
+            "readOnly": true
+          },
+          "total_deletions": {
+            "type": "integer",
+            "title": "Total Deletions",
+            "readOnly": true
           }
         },
         "type": "object",
@@ -6497,7 +10153,10 @@
           "unified_diff",
           "token_diff",
           "lines_added",
-          "lines_removed"
+          "lines_removed",
+          "token_diffs",
+          "total_additions",
+          "total_deletions"
         ],
         "title": "RevisionDiffResponse",
         "description": "Complete revision lineage and exact side-by-side token and unified diffs."
@@ -6512,54 +10171,6 @@
         ],
         "title": "SeverityLevel",
         "description": "Hierarchical severity levels governing enforcement thresholds."
-      },
-      "SubmissionCreate": {
-        "properties": {
-          "title": {
-            "type": "string",
-            "maxLength": 255,
-            "minLength": 2,
-            "title": "Title"
-          },
-          "document_type": {
-            "type": "string",
-            "maxLength": 32,
-            "minLength": 2,
-            "title": "Document Type"
-          },
-          "brand_profile_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Brand Profile Id"
-          },
-          "workspace_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Workspace Id"
-          },
-          "initial_content": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Initial Content"
-          },
-          "ast_span_map": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "type": "array",
-            "title": "Ast Span Map"
-          }
-        },
-        "type": "object",
-        "required": [
-          "title",
-          "document_type",
-          "brand_profile_id",
-          "workspace_id",
-          "initial_content"
-        ],
-        "title": "SubmissionCreate"
       },
       "SubmissionRead": {
         "properties": {
@@ -6621,6 +10232,18 @@
               }
             ],
             "title": "Current Revision Id"
+          },
+          "version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Number",
+            "default": 1
           },
           "created_at": {
             "anyOf": [
@@ -7056,6 +10679,98 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WebhookSubscriptionCreate": {
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Workspace Id"
+          },
+          "brand_profile_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Brand Profile Id"
+          },
+          "target_url": {
+            "type": "string",
+            "title": "Target Url",
+            "description": "HTTPS callback endpoint"
+          },
+          "secret_token": {
+            "type": "string",
+            "minLength": 16,
+            "title": "Secret Token",
+            "description": "Shared secret for HMAC-SHA256 signature verification"
+          },
+          "event_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Event Types"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workspace_id",
+          "brand_profile_id",
+          "target_url",
+          "secret_token"
+        ],
+        "title": "WebhookSubscriptionCreate",
+        "description": "Payload to register a new webhook destination."
+      },
+      "WebhookSubscriptionRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Workspace Id"
+          },
+          "brand_profile_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Brand Profile Id"
+          },
+          "target_url": {
+            "type": "string",
+            "title": "Target Url"
+          },
+          "event_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Event Types"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "workspace_id",
+          "brand_profile_id",
+          "target_url",
+          "event_types",
+          "is_active",
+          "created_at"
+        ],
+        "title": "WebhookSubscriptionRead",
+        "description": "Subscription record returned to tenant."
       },
       "WorkflowState": {
         "type": "string",

@@ -108,10 +108,38 @@ async def test_vector_retriever_plugin():
 
 @pytest.mark.asyncio
 async def test_ai_plugin_registry():
+    import app.services.analysis.plugins  # Ensure all plugins are loaded
+
     analyzer = AIPluginRegistry.get_analyzer("default-heuristic-analyzer")
     assert analyzer is not None
     assert analyzer.plugin_name == "default-heuristic-analyzer"
 
+    teammate_analyzer = AIPluginRegistry.get_analyzer("teammate-enterprise-analyzer")
+    assert teammate_analyzer is not None
+    assert teammate_analyzer.plugin_name == "teammate-enterprise-analyzer"
+
     retriever = AIPluginRegistry.get_retriever("default-hash-retriever")
     assert retriever is not None
     assert retriever.retriever_name == "default-hash-retriever"
+
+    teammate_retriever = AIPluginRegistry.get_retriever("teammate-hybrid-rrf-retriever")
+    assert teammate_retriever is not None
+    assert teammate_retriever.retriever_name == "teammate-hybrid-rrf-retriever"
+
+
+@pytest.mark.asyncio
+async def test_system_ai_plugins_endpoint():
+    from httpx import ASGITransport, AsyncClient
+    from app.main import app
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/api/v1/system/ai-plugins")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["active_header"] == "X-AI-Plugin-ID"
+        assert data["total_analyzers"] >= 2
+        plugin_ids = [a["plugin_id"] for a in data["analyzers"]]
+        assert "default-heuristic-analyzer" in plugin_ids
+        assert "teammate-enterprise-analyzer" in plugin_ids
+

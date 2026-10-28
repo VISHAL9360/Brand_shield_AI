@@ -5,7 +5,7 @@ and current user profile resolution with full cryptographic audit logging.
 """
 
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Any
 import uuid
 
 from fastapi import APIRouter, Depends, status
@@ -22,7 +22,7 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-from app.domain.enums import AuditAction
+from app.domain.enums import AuditAction, UserRole
 from app.domain.schemas.user import (
     LoginRequest,
     RefreshTokenRequest,
@@ -234,3 +234,68 @@ async def get_current_actor(
     Resolves the authenticated actor identity and associated workspace bounds.
     """
     return current_user
+
+
+@router.get("/demo-tokens", summary="One-Click Frontend Role Switcher Demo Tokens")
+async def get_demo_tokens(
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> dict[str, Any]:
+    """
+    Returns pre-signed, ready-to-use JWT access tokens and user profile objects
+    for all 3 RBAC roles (CREATOR, REVIEWER, ADMINISTRATOR) in a single JSON call.
+    Enables instant 1-click role switching in the React frontend during evaluation.
+    """
+    roles = [UserRole.CREATOR, UserRole.REVIEWER, UserRole.ADMINISTRATOR]
+    result: dict[str, Any] = {}
+
+    # Resolve active workspace or create default
+    ws_q = select(Workspace).limit(1)
+    ws_res = await session.execute(ws_q)
+    ws = ws_res.scalars().first()
+    if not ws:
+        ws = Workspace(name="Acme FinTech Global", slug="acme-fintech")
+        session.add(ws)
+        await session.flush()
+
+    for role in roles:
+        role_str = role.value if hasattr(role, "value") else str(role)
+        u_q = (
+            select(User)
+            .where(User.role == role, User.is_active == True)
+            .order_by(User.created_at.asc())
+            .limit(1)
+        )
+        u_res = await session.execute(u_q)
+        user = u_res.scalars().first()
+        if not user:
+            email = f"{role_str.lower()}@brandshield.ai"
+            name = f"Demo {role_str.capitalize()}"
+            user = User(
+                workspace_id=ws.id,
+                email=email,
+                hashed_password=hash_password("DemoSecure2026!"),
+                full_name=name,
+                role=role,
+                is_active=True,
+            )
+            session.add(user)
+            await session.flush()
+
+        access_token = create_access_token(
+            user_id=user.id,
+            email=user.email,
+            role=user.role,
+            workspace_id=user.workspace_id,
+        )
+
+        role_payload = {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            "role": role_str,
+            "user": UserRead.model_validate(user).model_dump(mode="json"),
+        }
+        result[role_str.lower()] = role_payload
+        result[role_str] = role_payload
+
+    return result

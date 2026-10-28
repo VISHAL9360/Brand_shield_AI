@@ -386,6 +386,34 @@
               ]
             }
           }
+        },
+        {
+          "name": "Preflight Inline Co-Pilot (<10ms)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/analysis/preflight-inline",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "analysis",
+                "preflight-inline"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand_profile_id\": \"{{demo_brand_profile_id}}\",\n  \"text_snippet\": \"Acme provides a 100% risk-free investment return.\"\n}"
+            }
+          }
         }
       ]
     },
@@ -594,6 +622,212 @@
                 "governance",
                 "audit-verify"
               ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Cryptographic Publication Attestation CA",
+      "item": [
+        {
+          "name": "Get Publication Attestation Certificate",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{creator_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/submissions/{{submission_id}}/certificate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "submissions",
+                "{{submission_id}}",
+                "certificate"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify Gatekeeper Publication Clearance (<1ms)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/attestation/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "attestation",
+                "verify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"certificate_id\": \"CERT-20261028-00000001\",\n  \"document_sha256_hash\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Reverse Blast-Radius & Webhook Outbox",
+      "item": [
+        {
+          "name": "Get Enterprise Blast Radius Overview",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{reviewer_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/governance/blast-radius",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "governance",
+                "blast-radius"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Trigger Fact Blast-Radius Re-verification",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{reviewer_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facts/{{fact_id}}/blast-radius",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facts",
+                "{{fact_id}}",
+                "blast-radius"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Flush Webhook Outbox Queue",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/webhooks/outbox/flush?limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "webhooks",
+                "outbox",
+                "flush"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Register Webhook Subscription",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/webhooks/subscriptions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "webhooks",
+                "subscriptions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand_profile_id\": \"{{demo_brand_profile_id}}\",\n  \"target_url\": \"https://api.acmefintech.com/webhooks/governance\",\n  \"secret_token\": \"demo-webhook-secret-token\",\n  \"event_types\": [\n    \"fact.expired.blast_radius_triggered\"\n  ]\n}"
             }
           }
         }

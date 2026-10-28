@@ -37,10 +37,37 @@ def compile_pg_uuid_sqlite(type_, compiler, **kw):
     return "CHAR(36)"
 
 
+try:
+    from pgvector.vector import Vector as _BaseVector
+    _orig_from_db = getattr(_BaseVector, "_from_db", None)
+    if _orig_from_db:
+        def _safe_from_db(cls, value):
+            if value is None or isinstance(value, (cls, list)):
+                return value
+            return _orig_from_db(value)
+        _BaseVector._from_db = classmethod(_safe_from_db)
+except Exception:
+    pass
+
+_PGVECTOR_AVAILABLE: bool = True
+
+
+def set_pgvector_available(available: bool) -> None:
+    """Sets whether the target PostgreSQL instance has native pgvector C-extension loaded."""
+    global _PGVECTOR_AVAILABLE
+    _PGVECTOR_AVAILABLE = bool(available)
+
+
+def is_pgvector_available() -> bool:
+    """Checks whether the native pgvector extension is currently active."""
+    return _PGVECTOR_AVAILABLE
+
+
 class PortableVector(TypeDecorator):
     """
     Dual-Dialect Vector Type:
-    - On PostgreSQL: maps to native pgvector.sqlalchemy.Vector(dim).
+    - On PostgreSQL (with pgvector installed): maps to native pgvector.sqlalchemy.Vector(dim).
+    - On PostgreSQL (vanilla / without pgvector): transparently falls back to JSONB.
     - On SQLite/MySQL/other: transparently maps to JSON list of floats.
     """
     impl = JSON
@@ -51,12 +78,15 @@ class PortableVector(TypeDecorator):
         self.dim = dim
 
     def load_dialect_impl(self, dialect: Dialect):
-        if dialect.name == "postgresql":
+        if dialect.name == "postgresql" and _PGVECTOR_AVAILABLE:
             try:
                 from pgvector.sqlalchemy import Vector
                 return dialect.type_descriptor(Vector(self.dim))
-            except ImportError:
-                return dialect.type_descriptor(JSON())
+            except (ImportError, Exception):
+                pass
+        if dialect.name == "postgresql":
+            from sqlalchemy.dialects.postgresql import JSONB
+            return dialect.type_descriptor(JSONB())
         return dialect.type_descriptor(JSON())
 
     def process_bind_param(self, value: Any, dialect: Dialect) -> Any:

@@ -45,22 +45,23 @@ from app.infrastructure.db.session import get_async_session
 from app.services.analysis.asset_matcher import VisualAssetMatcher
 from app.services.audit_service import AuditService
 
-router = APIRouter()
+from app.api.v1.dependencies import AdminUser, SessionDep
 
-# Enforce strict ADMINISTRATOR RBAC across all routes
-AdminUser = Annotated[User, Depends(RequireRole(UserRole.ADMINISTRATOR))]
+router = APIRouter()
 
 
 # ==============================================================================
 # 1. Brand Profiles CRUD
 # ==============================================================================
 
+@router.post("/", response_model=BrandProfileRead, status_code=status.HTTP_201_CREATED)
 @router.post("/profiles", response_model=BrandProfileRead, status_code=status.HTTP_201_CREATED)
 async def create_brand_profile(
     payload: BrandProfileCreate,
     admin: AdminUser,
-    session: Annotated[AsyncSession, Depends(get_async_session)],
+    session: SessionDep,
 ) -> BrandProfile:
+
     """Creates a new brand profile specifying corporate tone, banned vocabulary, and privacy policies."""
     profile = BrandProfile(
         workspace_id=payload.workspace_id or admin.workspace_id,
@@ -87,10 +88,11 @@ async def create_brand_profile(
     return profile
 
 
+@router.get("/", response_model=list[BrandProfileRead])
 @router.get("/profiles", response_model=list[BrandProfileRead])
 async def list_brand_profiles(
     admin: AdminUser,
-    session: Annotated[AsyncSession, Depends(get_async_session)],
+    session: SessionDep,
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> list[BrandProfile]:
@@ -106,11 +108,12 @@ async def list_brand_profiles(
     return list(result.scalars().all())
 
 
+@router.get("/{profile_id}", response_model=BrandProfileRead)
 @router.get("/profiles/{profile_id}", response_model=BrandProfileRead)
 async def get_brand_profile(
     profile_id: uuid.UUID,
     admin: AdminUser,
-    session: Annotated[AsyncSession, Depends(get_async_session)],
+    session: SessionDep,
 ) -> BrandProfile:
     """Retrieves detailed brand profile governance specification by unique ID."""
     profile = await session.get(BrandProfile, profile_id)
@@ -194,6 +197,11 @@ async def delete_brand_profile(
 # ==============================================================================
 
 @router.post(
+    "/{profile_id}/guidelines",
+    response_model=BrandGuidelineRead,
+    status_code=status.HTTP_201_CREATED,
+)
+@router.post(
     "/profiles/{profile_id}/guidelines",
     response_model=BrandGuidelineRead,
     status_code=status.HTTP_201_CREATED,
@@ -202,7 +210,7 @@ async def create_brand_guideline(
     profile_id: uuid.UUID,
     payload: BrandGuidelineCreate,
     admin: AdminUser,
-    session: Annotated[AsyncSession, Depends(get_async_session)],
+    session: SessionDep,
 ) -> BrandGuideline:
     """Adds a regulatory compliance directive clause with dense 1536-dim vector embedding."""
     profile = await session.get(BrandProfile, profile_id)
@@ -240,12 +248,14 @@ async def create_brand_guideline(
     return guideline
 
 
+@router.get("/{profile_id}/guidelines", response_model=list[BrandGuidelineRead])
 @router.get("/profiles/{profile_id}/guidelines", response_model=list[BrandGuidelineRead])
 async def list_brand_guidelines(
     profile_id: uuid.UUID,
     admin: AdminUser,
-    session: Annotated[AsyncSession, Depends(get_async_session)],
+    session: SessionDep,
 ) -> list[BrandGuideline]:
+
     """Lists all guideline directives indexed under the designated brand profile."""
     profile = await session.get(BrandProfile, profile_id)
     if not profile or profile.workspace_id != admin.workspace_id:

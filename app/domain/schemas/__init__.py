@@ -23,6 +23,20 @@ from app.domain.schemas.governance import (
     GovernanceReportResponse,
     TraceabilityMetricsResponse,
 )
+from app.domain.schemas.attestation import (
+    AttestationVerifyRequest,
+    AttestationVerifyResponse,
+    PublicationAttestationCertificateRead,
+)
+from app.domain.schemas.blast_radius import (
+    BlastRadiusTriggerResponse,
+    CharacterSpanCitation,
+    EnterpriseBlastRadiusOverview,
+    OutboxEventRead,
+    OutboxFlushResponse,
+    WebhookSubscriptionCreate,
+    WebhookSubscriptionRead,
+)
 from app.domain.schemas.brand_profile import (
     BrandGuidelineBase,
     BrandGuidelineCreate,
@@ -120,4 +134,14 @@ __all__ = [
     "TraceabilityMetricsResponse",
     "EvaluationSampleResult",
     "EvaluationBenchmarkResponse",
+    "PublicationAttestationCertificateRead",
+    "AttestationVerifyRequest",
+    "AttestationVerifyResponse",
+    "CharacterSpanCitation",
+    "BlastRadiusTriggerResponse",
+    "EnterpriseBlastRadiusOverview",
+    "OutboxEventRead",
+    "OutboxFlushResponse",
+    "WebhookSubscriptionCreate",
+    "WebhookSubscriptionRead",
 ]

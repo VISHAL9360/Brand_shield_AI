@@ -1,19 +1,22 @@
 """
-BrandShield AI - Findings and Triage Actions Endpoints.
+BrandShield AI - Findings & Triage Actions Router.
+Provides tri-state finding creation, revision findings listing, and author feedback resolution.
 """
 
 from typing import Annotated
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.dependencies import get_current_user, require_role
-from app.domain.enums import UserRole
+from app.api.v1.dependencies import (
+    CreatorUser,
+    CurrentUser,
+    ReviewerUser,
+    SessionDep,
+)
 from app.domain.schemas.finding import FindingCreate, FindingRead, FindingUpdateAction
-from app.infrastructure.db.models import Finding, User
-from app.infrastructure.db.session import get_async_session
+from app.infrastructure.db.models import Finding
 from app.services.finding_triage_service import FindingTriageService
 
 router = APIRouter()
@@ -22,8 +25,8 @@ router = APIRouter()
 @router.post("/", response_model=FindingRead, status_code=status.HTTP_201_CREATED)
 async def create_finding(
     payload: FindingCreate,
-    current_user: Annotated[User, Depends(require_role([UserRole.REVIEWER, UserRole.ADMINISTRATOR]))],
-    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: ReviewerUser,
+    session: SessionDep,
 ) -> Finding:
     """Ingests finding with automated tri-state triage and stochastic anti-bias sampling."""
     try:
@@ -40,8 +43,8 @@ async def create_finding(
 @router.get("/by-revision/{revision_id}", response_model=list[FindingRead])
 async def list_findings_by_revision(
     revision_id: uuid.UUID,
-    current_user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: CurrentUser,
+    session: SessionDep,
 ) -> list[Finding]:
     """Retrieves all detection findings associated with a specific immutable revision."""
     query = (
@@ -57,8 +60,8 @@ async def list_findings_by_revision(
 async def update_creator_action(
     finding_id: uuid.UUID,
     payload: FindingUpdateAction,
-    current_user: Annotated[User, Depends(require_role([UserRole.CREATOR, UserRole.ADMINISTRATOR]))],
-    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: CreatorUser,
+    session: SessionDep,
 ) -> Finding:
     """Updates author action (ACCEPTED, REJECTED, EDITED) in response to a finding."""
     try:

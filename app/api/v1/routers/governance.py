@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import RequireRole
 from app.domain.enums import UserRole
 from app.domain.schemas.audit import AuditChainVerificationResult
+from app.domain.schemas.blast_radius import EnterpriseBlastRadiusOverview
 from app.domain.schemas.governance import (
     EvaluationBenchmarkResponse,
     GovernanceReportResponse,
@@ -152,3 +153,27 @@ async def enforce_data_retention(
         dry_run=dry_run,
     )
     return result.to_dict()
+
+
+@router.get(
+    "/blast-radius",
+    response_model=EnterpriseBlastRadiusOverview,
+    status_code=status.HTTP_200_OK,
+    summary="Enterprise Reverse Blast-Radius Knowledge Graph Diagnostic",
+)
+async def get_enterprise_blast_radius(
+    auditor: AuthorizedAuditor,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    brand_profile_id: Optional[uuid.UUID] = Query(None, description="Optional brand profile filter"),
+) -> EnterpriseBlastRadiusOverview:
+    """
+    Retrieves enterprise-wide citation knowledge graph diagnostic metrics,
+    including stale fact count, impacted approved collateral, and transactional outbox statuses.
+    """
+    from app.services.governance.blast_radius_service import BlastRadiusService
+    return await BlastRadiusService.get_enterprise_overview(
+        session=session,
+        workspace_id=auditor.workspace_id,
+        brand_profile_id=brand_profile_id,
+    )
+

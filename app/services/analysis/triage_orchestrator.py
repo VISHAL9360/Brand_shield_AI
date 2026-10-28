@@ -20,11 +20,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.crypto_storage import CryptoStorageEngine
 from app.domain.enums import (
     AuditAction,
     CreatorAction,
     DetectorSource,
     FindingCategory,
+    SeverityLevel,
     TriageStatus,
     WorkflowState,
 )
@@ -37,7 +39,7 @@ from app.infrastructure.db.models import (
     Submission,
 )
 from app.services.analysis.deterministic_engine import DeterministicRuleEngine
-from app.services.analysis.privacy_gate import PrivacyGateRouter
+from app.services.analysis.privacy_gate import PIIScrubber, PrivacyGateRouter, ToneAnalysisFinding
 from app.services.analysis.temporal_fact_engine import TemporalFactEngine
 from app.services.audit_service import AuditService
 
@@ -57,6 +59,7 @@ class AnalysisPipelineResult:
     needs_verification_missing_evidence: int
     automation_bias_audits_injected: int
     processing_duration_ms: float
+    suppressed_false_positives_count: int = 0
     findings: list[Finding] = field(default_factory=list)
 
 
@@ -66,6 +69,25 @@ class TriageOrchestrator:
     Executes deterministic checks first, anchors factual assertions in verified temporal ground truth,
     applies zero-trust external privacy gating, and routes findings through calibrated confidence tiers.
     """
+
+    @classmethod
+    async def _evaluate_asset_matcher_concurrent(
+        cls,
+        workspace_id: uuid.UUID,
+        brand_profile_id: uuid.UUID,
+        session: AsyncSession,
+    ) -> list[Any]:
+        """Concurrent visual asset matcher check against approved catalog."""
+        try:
+            from app.infrastructure.db.models import ApprovedBrandAsset
+            q = select(ApprovedBrandAsset).where(
+                ApprovedBrandAsset.workspace_id == workspace_id,
+                ApprovedBrandAsset.brand_profile_id == brand_profile_id,
+            ).limit(10)
+            res = await session.execute(q)
+            return list(res.scalars().all())
+        except Exception:
+            return []
 
     @classmethod
     def evaluate_automation_bias_safeguard(cls, sampling_rate: float = AUTOMATION_BIAS_SAMPLE_RATE) -> bool:
@@ -85,11 +107,13 @@ class TriageOrchestrator:
         preloaded_guidelines: Optional[list[BrandGuideline]] = None,
         preloaded_facts: Optional[list[ApprovedFact]] = None,
         audit_sample_rate: float = AUTOMATION_BIAS_SAMPLE_RATE,
+        ai_plugin_id: Optional[str] = None,
     ) -> AnalysisPipelineResult:
         """
         Executes end-to-end 4-stage analysis pipeline and persists findings with audit trails.
         """
         start_time = time.perf_counter()
+        content_text = CryptoStorageEngine.decrypt_content(content_text)
 
         # ----------------------------------------------------------------------
         # 0. Resolve Entity Context
@@ -98,7 +122,7 @@ class TriageOrchestrator:
         if not profile:
             profile = await session.get(BrandProfile, brand_profile_id)
             if not profile:
-                raise ValueError(f"Brand profile {brand_profile_id} not found.")
+                raise ValueError(f"BrandProfile '{brand_profile_id}' not found.")
 
         guidelines = preloaded_guidelines
         if guidelines is None:
@@ -110,8 +134,8 @@ class TriageOrchestrator:
             guidelines = list(g_res.scalars().all())
 
         # ----------------------------------------------------------------------
-        # Stage 1 (L1 In-Memory Automaton) & Stage 2 (Temporal Fact Hybrid RAG)
-        # Executed concurrently via asyncio.gather for sub-millisecond triage
+        # Stage 1 (Deterministic), Stage 2 (Temporal Fact), and Visual Asset Matcher
+        # Executed concurrently via asyncio.gather for sub-second triage
         # ----------------------------------------------------------------------
         stage1_task = asyncio.to_thread(
             DeterministicRuleEngine.analyze_document,
@@ -125,18 +149,78 @@ class TriageOrchestrator:
             session=session,
             preloaded_facts=preloaded_facts,
         )
-        deterministic_hits, temporal_hits = await asyncio.gather(stage1_task, stage2_task)
+        stage_asset_task = cls._evaluate_asset_matcher_concurrent(
+            workspace_id=workspace_id,
+            brand_profile_id=brand_profile_id,
+            session=session,
+        )
+        deterministic_hits, temporal_hits, _ = await asyncio.gather(
+            stage1_task, stage2_task, stage_asset_task
+        )
 
         # ----------------------------------------------------------------------
-        # Stage 3: Zero-Trust Privacy Gate & Circuit-Breaker LLM Router
+        # Stage 3: Pre-Flight Zero-Trust Privacy Gate & Circuit-Breaker AI Router
+        # Strictly redacts PII and secrets before invoking AI Plugin Port / LLMs
         # ----------------------------------------------------------------------
-        tone_hits = await PrivacyGateRouter.analyze_tone_and_messaging(
-            content_text=content_text,
-            brand_profile=profile,
-            workspace_id=workspace_id,
-            session=session,
-            requested_provider=requested_provider,
-        )
+        scrub_result = PIIScrubber.scrub(content_text)
+        sanitized_content = scrub_result.sanitized_text
+
+        # Dynamic AI Plugin Selection via ai_plugin_id / X-AI-Plugin-ID
+        if ai_plugin_id:
+            import app.services.analysis.plugins  # Ensure plugins are registered
+            from app.domain.ai_plugin_port import AIPluginRegistry, PluginDocumentContext
+            selected_plugin = AIPluginRegistry.get_analyzer(ai_plugin_id)
+            if selected_plugin:
+                prohibited_terms = list(getattr(profile, "banned_terminology_map", {}).keys())
+                g_dicts = [
+                    {"id": str(g.id), "category": getattr(g.category, "value", str(g.category)), "text": g.clause_text}
+                    for g in guidelines
+                ]
+                plugin_ctx = PluginDocumentContext(
+                    content_text=sanitized_content,
+                    brand_name=profile.name,
+                    prohibited_terms=prohibited_terms,
+                    guidelines=g_dicts,
+                )
+                plugin_tone_res = await selected_plugin.analyze_tone(plugin_ctx)
+                tone_hits = []
+                for pf in plugin_tone_res.findings:
+                    cat = FindingCategory.TERMINOLOGY if pf.issue_category in ("TERMINOLOGY", "PROHIBITED_CLAIM") else FindingCategory.TONE
+                    sev = (
+                        SeverityLevel.CRITICAL if pf.severity == "CRITICAL"
+                        else SeverityLevel.HIGH if pf.severity == "HIGH"
+                        else SeverityLevel.MEDIUM
+                    )
+                    tone_hits.append(
+                        ToneAnalysisFinding(
+                            issue_category=cat,
+                            severity=sev,
+                            confidence_score=pf.confidence_score,
+                            triage_status=TriageStatus.FLAGGED_HIGH_CONFIDENCE if pf.confidence_score >= 0.85 else TriageStatus.ROUTED_TO_HUMAN_LOW_CONFIDENCE,
+                            start_offset=pf.start_offset,
+                            end_offset=pf.end_offset,
+                            explanation_reason=pf.explanation_reason,
+                            suggested_correction=pf.suggested_correction,
+                            detector_source=DetectorSource.EXTERNAL_LLM,
+                        )
+                    )
+            else:
+                tone_hits = await PrivacyGateRouter.analyze_tone_and_messaging(
+                    content_text=content_text,
+                    brand_profile=profile,
+                    workspace_id=workspace_id,
+                    session=session,
+                    requested_provider=requested_provider,
+                )
+        else:
+            tone_hits = await PrivacyGateRouter.analyze_tone_and_messaging(
+                content_text=content_text,
+                brand_profile=profile,
+                workspace_id=workspace_id,
+                session=session,
+                requested_provider=requested_provider,
+            )
+
 
         # ----------------------------------------------------------------------
         # Stage 4: Confidence Triage & 15% Automation-Bias Safeguard
@@ -269,19 +353,55 @@ class TriageOrchestrator:
                 )
 
         # ----------------------------------------------------------------------
-        # 5. Persist Findings & Update Submission State Machine
+        # Stage 5: Adversarial Red-Team Critic & Epistemic Uncertainty Evaluator
+        # Eliminates false positives (negation, competitor contrast, disclaimers)
+        # and computes epistemic uncertainty and counterfactual legal risk.
+        # ----------------------------------------------------------------------
+        from app.services.analysis.adversarial_critic import AdversarialCritic
+        critic_result = AdversarialCritic.critique_findings(
+            content_text=content_text,
+            findings=raw_finding_records,
+        )
+        raw_finding_records = critic_result.accepted_findings
+        suppressed_fp_count = critic_result.suppressed_false_positives_count
+
+        if suppressed_fp_count > 0:
+            await AuditService.record_event(
+                session=session,
+                action=AuditAction.FALSE_POSITIVE_CRITIQUE_APPLIED,
+                workspace_id=workspace_id,
+                payload={
+                    "revision_id": str(revision_id),
+                    "suppressed_count": suppressed_fp_count,
+                    "accepted_count": len(raw_finding_records),
+                    "suppression_rate_pct": critic_result.telemetry.get("suppression_rate_pct", 0.0),
+                },
+            )
+
+        # ----------------------------------------------------------------------
+        # 6. Persist Findings & Update Submission State Machine
         # ----------------------------------------------------------------------
         for f in raw_finding_records:
             session.add(f)
         await session.flush()
 
-        # Update root submission state to TRIAGED
+        # Update root submission state to TRIAGED and record bi-directional citation edges
         rev = await session.get(DocumentRevision, revision_id)
         if rev:
             sub = await session.get(Submission, rev.submission_id)
             if sub:
                 sub.workflow_state = WorkflowState.TRIAGED
                 await session.flush()
+
+                # Bi-directional Citation Knowledge Graph population
+                from app.services.governance.blast_radius_service import BlastRadiusService
+                await BlastRadiusService.record_citation_edges(
+                    session=session,
+                    submission_id=sub.id,
+                    revision_id=revision_id,
+                    findings=raw_finding_records,
+                    content_text=content_text,
+                )
 
         duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
@@ -297,6 +417,7 @@ class TriageOrchestrator:
                 "temporal_count": len(temporal_hits),
                 "tone_count": len(tone_hits),
                 "automation_bias_audits": audit_count,
+                "suppressed_false_positives_count": suppressed_fp_count,
                 "duration_ms": duration_ms,
             },
         )
@@ -317,6 +438,7 @@ class TriageOrchestrator:
             needs_verification_missing_evidence=cnt_missing,
             automation_bias_audits_injected=audit_count,
             processing_duration_ms=duration_ms,
+            suppressed_false_positives_count=suppressed_fp_count,
             findings=raw_finding_records,
         )
 
@@ -539,7 +661,30 @@ class TriageOrchestrator:
                         },
                     )
 
-        # 5. Persist Findings & Update Submission State Machine
+        # ----------------------------------------------------------------------
+        # Stage 5: Adversarial Red-Team Critic & Epistemic Uncertainty Evaluator
+        # ----------------------------------------------------------------------
+        from app.services.analysis.adversarial_critic import AdversarialCritic
+        t5_start = time.perf_counter()
+        critic_result = AdversarialCritic.critique_findings(
+            content_text=content_text,
+            findings=raw_finding_records,
+        )
+        raw_finding_records = critic_result.accepted_findings
+        t5_ms = round((time.perf_counter() - t5_start) * 1000, 2)
+        yield {
+            "event": "STAGE_5_CRITIC_VERIFIED",
+            "data": {
+                "stage": "STAGE_5_CRITIC_VERIFIED",
+                "latency_ms": t5_ms,
+                "suppressed_false_positives_count": critic_result.suppressed_false_positives_count,
+                "accepted_findings_count": len(raw_finding_records),
+                "telemetry": critic_result.telemetry,
+                "summary": f"Critic verified: {critic_result.suppressed_false_positives_count} false alarm(s) suppressed",
+            },
+        }
+
+        # 6. Persist Findings & Update Submission State Machine
         for f in raw_finding_records:
             session.add(f)
         await session.flush()
@@ -565,6 +710,7 @@ class TriageOrchestrator:
                 "temporal_count": len(temporal_hits),
                 "tone_count": len(tone_hits),
                 "automation_bias_audits": audit_count,
+                "suppressed_false_positives_count": critic_result.suppressed_false_positives_count,
                 "duration_ms": duration_ms,
             },
         )
@@ -586,6 +732,7 @@ class TriageOrchestrator:
                 "stale_facts": cnt_stale,
                 "missing_evidence": cnt_missing,
                 "automation_bias_audits": audit_count,
+                "suppressed_false_positives": critic_result.suppressed_false_positives_count,
             },
         }
 
@@ -597,6 +744,7 @@ class TriageOrchestrator:
                 "status": "SUCCESS",
                 "revision_id": str(revision_id),
                 "total_findings": len(raw_finding_records),
+                "suppressed_false_positives_count": critic_result.suppressed_false_positives_count,
                 "duration_ms": duration_ms,
                 "findings": [
                     {
@@ -609,6 +757,8 @@ class TriageOrchestrator:
                         "end_offset": f.end_offset,
                         "explanation_reason": f.explanation_reason,
                         "suggested_correction": f.suggested_correction,
+                        "epistemic_uncertainty_score": getattr(f, "epistemic_uncertainty_score", None),
+                        "counterfactual_risk_summary": getattr(f, "counterfactual_risk_summary", None),
                     }
                     for f in raw_finding_records
                 ],

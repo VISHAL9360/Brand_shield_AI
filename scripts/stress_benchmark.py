@@ -52,6 +52,7 @@ from app.infrastructure.db.models import (
     BrandProfile,
     DocumentRevision,
     Finding,
+    PublicationAttestationCertificate,
     Submission,
     User,
     Workspace,
@@ -283,11 +284,51 @@ async def setup_inmemory_benchmark_db():
         is_automation_bias_audit=False,
     )
 
+    # Seed Publication Attestation Certificate for sub1
+    from app.services.workflow.attestation_service import PublicationAttestationService
+    cert_id = uuid.uuid4()
+    now_utc = datetime.now(timezone.utc)
+    valid_until = now_utc + timedelta(days=90)
+    canonical_payload = {
+        "approved_revision_id": str(rev1_id),
+        "brand_profile_id": str(prof_id),
+        "certificate_id": str(cert_id),
+        "document_sha256_hash": rev1.sha256_content_hash,
+        "issued_at": now_utc.isoformat(),
+        "merkle_root_of_cited_facts_and_guidelines": "merkle_root_benchmark_001",
+        "reviewer_id": str(reviewer.id),
+        "submission_id": str(sub1_id),
+        "valid_until": valid_until.isoformat(),
+    }
+    cert_signature = PublicationAttestationService.compute_signature(
+        str(getattr(get_settings(), "WEBHOOK_SECRET_KEY", None) or getattr(get_settings(), "SECRET_KEY", "brandshield-attestation-2026")),
+        canonical_payload,
+    )
+    cert = PublicationAttestationCertificate(
+        id=cert_id,
+        submission_id=sub1_id,
+        approved_revision_id=rev1_id,
+        document_sha256_hash=rev1.sha256_content_hash,
+        reviewer_id=reviewer.id,
+        brand_profile_id=prof_id,
+        merkle_root_of_cited_facts_and_guidelines="merkle_root_benchmark_001",
+        issued_at=now_utc,
+        valid_until=valid_until,
+        cryptographic_signature=cert_signature,
+        status="ACTIVE",
+        metadata_json={
+            "canonical_payload": canonical_payload,
+            "cited_fact_ids": [],
+            "cited_guideline_ids": [],
+            "earliest_fact_expiry": valid_until.isoformat(),
+        },
+    )
+
     async with session_factory() as session:
         session.add_all([
             workspace, creator, reviewer, admin,
             brand_profile, guideline, active_fact, expired_fact,
-            sub1, rev1, sub2, rev2, race_finding,
+            sub1, rev1, sub2, rev2, race_finding, cert,
         ])
         await session.flush()
         sub1.current_revision_id = rev1.id
@@ -315,6 +356,8 @@ async def setup_inmemory_benchmark_db():
         "shared_revision_id": rev1_id,
         "race_submission_id": sub2_id,
         "race_finding_id": race_finding_id,
+        "cert_id": cert_id,
+        "cert_hash": rev1.sha256_content_hash,
         "temp_db": temp_db,
     }
 
@@ -455,16 +498,57 @@ async def run_stress_benchmark():
             success = resp.status_code == 200
             results.append({"workload": "5. Cryptographic Governance", "status": resp.status_code, "success": success, "latency_ms": elapsed})
 
-        # Assemble exactly 150 tasks
+        # ----------------------------------------------------------------------
+        # WORKLOAD 6: Sub-10ms Inline Co-Pilot Preflight (25 Requests)
+        # Tests real-time typing preflight without database lock overhead
+        # ----------------------------------------------------------------------
+        async def task_preflight_inline(req_idx: int):
+            t0 = time.perf_counter()
+            payload = {
+                "brand_profile_id": str(env["brand_profile_id"]),
+                "text_snippet": "We guarantee 100% risk-free yield with guaranteed monopoly.",
+            }
+            resp = await client.post(
+                "/api/v1/analysis/preflight-inline",
+                headers=creator_headers,
+                json=payload,
+            )
+            elapsed = (time.perf_counter() - t0) * 1000
+            latencies.append(elapsed)
+            success = resp.status_code == 200 and resp.json().get("total_spans_detected", 0) >= 1
+            results.append({"workload": "6. Sub-10ms Preflight Co-Pilot", "status": resp.status_code, "success": success, "latency_ms": elapsed})
+
+        # ----------------------------------------------------------------------
+        # WORKLOAD 7: Sub-1ms CMS Gatekeeper Attestation Verify (25 Requests)
+        # Tests high-throughput cryptographic publication passport verification
+        # ----------------------------------------------------------------------
+        async def task_attestation_verify(req_idx: int):
+            t0 = time.perf_counter()
+            payload = {
+                "certificate_id": str(env["cert_id"]),
+                "document_sha256_hash": env["cert_hash"],
+            }
+            resp = await client.post(
+                "/api/v1/attestation/verify",
+                json=payload,
+            )
+            elapsed = (time.perf_counter() - t0) * 1000
+            latencies.append(elapsed)
+            success = resp.status_code == 200 and resp.json().get("is_valid_for_publish") is True
+            results.append({"workload": "7. Publication Attestation CA", "status": resp.status_code, "success": success, "latency_ms": elapsed})
+
+        # Assemble 170 tasks across 7 parallel pipelines
         tasks = (
-            [task_ingestion(i) for i in range(30)] +
-            [task_analysis(i) for i in range(40)] +
-            [task_revision_race(i) for i in range(30)] +
-            [task_chaos_llm(i) for i in range(30)] +
-            [task_governance(i) for i in range(20)]
+            [task_ingestion(i) for i in range(25)] +
+            [task_analysis(i) for i in range(30)] +
+            [task_revision_race(i) for i in range(25)] +
+            [task_chaos_llm(i) for i in range(25)] +
+            [task_governance(i) for i in range(15)] +
+            [task_preflight_inline(i) for i in range(25)] +
+            [task_attestation_verify(i) for i in range(25)]
         )
 
-        console.print(f"[bold yellow]Executing 150 concurrent requests across 5 parallel pipelines...[/bold yellow]")
+        console.print(f"[bold yellow]Executing 170 concurrent requests across 7 parallel FAANG pipelines...[/bold yellow]")
         await asyncio.gather(*tasks)
 
         total_bench_duration = time.perf_counter() - start_bench_time
@@ -488,6 +572,12 @@ async def run_stress_benchmark():
         audit_res = await AuditService.verify_chain_integrity(session, env["workspace_id"])
         chain_valid = audit_res.chain_valid
 
+    preflight_lats = [r["latency_ms"] for r in results if r["workload"].startswith("6.")]
+    p95_preflight = sorted(preflight_lats)[int(len(preflight_lats) * 0.95)] if preflight_lats else 0.0
+
+    attest_lats = [r["latency_ms"] for r in results if r["workload"].startswith("7.")]
+    p95_attest = sorted(attest_lats)[int(len(attest_lats) * 0.95)] if attest_lats else 0.0
+
     # --------------------------------------------------------------------------
     # RENDER RICH EXECUTIVE SCORECARD
     # --------------------------------------------------------------------------
@@ -501,13 +591,15 @@ async def run_stress_benchmark():
     scorecard_table.add_column("Measured Production Value", justify="center", style="bold green", width=26)
     scorecard_table.add_column("Engineering SLA Guarantee", justify="center", style="bold yellow", width=24)
 
-    scorecard_table.add_row("Total Concurrent Requests", f"{total_requests}", "150 Requests")
+    scorecard_table.add_row("Total Concurrent Requests", f"{total_requests}", "170 Requests")
     scorecard_table.add_row("Unhandled Errors (500)", f"{unhandled_500s}", "0 Errors (0.00%)")
     scorecard_table.add_row("Hyperscale Success Rate", f"{(successful_requests / total_requests) * 100:.2f}%", "100.0%")
     scorecard_table.add_row("System Throughput", f"{throughput:.1f} req/sec", "> 50.0 req/sec")
     scorecard_table.add_row("P50 Inference Latency", f"{p50:.2f} ms", "< 25.0 ms")
     scorecard_table.add_row("P95 Tail Latency", f"{p95:.2f} ms", "< 50.0 ms")
     scorecard_table.add_row("P99 Worst-Case Latency", f"{p99:.2f} ms", "< 150.0 ms")
+    scorecard_table.add_row("Sub-10ms Inline Preflight P95", f"{p95_preflight:.2f} ms", "< 10.0 ms")
+    scorecard_table.add_row("CMS Attestation Verify P95", f"{p95_attest:.2f} ms", "< 5.0 ms")
     scorecard_table.add_row("L1 Brand Automaton Cache Hits", f"{cache_metrics['hits']} hits ({cache_metrics['hit_ratio_pct']}%)", "> 85.0% Cache Hit")
     scorecard_table.add_row("Audit Ledger SHA-256 Integrity", "VALID (100% Sound)" if chain_valid else "INVALID", "Zero Tampering")
     scorecard_table.add_row("Optimistic Lock & Idempotency", "100% Protected (0 Overwrites)", "Zero Data Loss")

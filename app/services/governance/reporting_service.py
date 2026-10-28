@@ -43,7 +43,7 @@ class GovernanceReportService:
             JOIN document_revisions dr ON f.revision_id = dr.id
             JOIN submissions s ON dr.submission_id = s.id
             WHERE s.workspace_id = :workspace_id
-              AND (:brand_profile_id IS NULL OR s.brand_profile_id = :brand_profile_id)
+              AND (CAST(:brand_profile_id AS UUID) IS NULL OR s.brand_profile_id = CAST(:brand_profile_id AS UUID))
         )
         SELECT 
             'CUBE' AS metric_type,
@@ -113,7 +113,7 @@ class GovernanceReportService:
         FROM review_decisions rd
         JOIN submissions s ON rd.submission_id = s.id
         WHERE s.workspace_id = :workspace_id
-          AND (:brand_profile_id IS NULL OR s.brand_profile_id = :brand_profile_id)
+          AND (CAST(:brand_profile_id AS UUID) IS NULL OR s.brand_profile_id = CAST(:brand_profile_id AS UUID))
         GROUP BY DATE_TRUNC('day', rd.decided_at), rd.decision
     """)
 
@@ -214,6 +214,17 @@ class GovernanceReportService:
             category_counts["UNSUPPORTED_CLAIM"] = category_counts["UNSUBSTANTIATED_CLAIM"]
 
         # Build Recharts datasets
+        # Color palettes curated for premium dark/light mode React + Tailwind themes
+        category_colors = {
+            "TONE": "#8B5CF6",
+            "TERMINOLOGY": "#EC4899",
+            "MESSAGING": "#3B82F6",
+            "ACCESSIBILITY": "#10B981",
+            "STALE_FACT": "#F59E0B",
+            "UNSUBSTANTIATED_CLAIM": "#EF4444",
+            "REGULATORY_VIOLATION": "#DC2626",
+        }
+
         # 1. BarChart: Recurring issue categories
         cube_map: dict[tuple[str, str], int] = {
             (item.issue_category, item.severity): item.count
@@ -221,33 +232,74 @@ class GovernanceReportService:
             if item.issue_category and item.severity
         }
         recharts_category_bar: list[RechartsCategoryBar] = []
+        category_chart_data: list[dict[str, Any]] = []
         for cat, cnt in category_counts.items():
             if cat == "UNSUPPORTED_CLAIM":
                 continue
+            cat_name = cat.replace("_", " ").title()
+            cat_fill = category_colors.get(cat, "#3B82F6")
+            crit_c = cube_map.get((cat, "CRITICAL"), 0)
+            high_c = cube_map.get((cat, "HIGH"), 0)
+            med_c = cube_map.get((cat, "MEDIUM"), 0)
+            low_c = cube_map.get((cat, "LOW"), 0)
+
             recharts_category_bar.append(
                 RechartsCategoryBar(
                     category=cat,
-                    name=cat.replace("_", " ").title(),
+                    name=cat_name,
                     count=cnt,
-                    CRITICAL=cube_map.get((cat, "CRITICAL"), 0),
-                    HIGH=cube_map.get((cat, "HIGH"), 0),
-                    MEDIUM=cube_map.get((cat, "MEDIUM"), 0),
-                    LOW=cube_map.get((cat, "LOW"), 0),
+                    value=cnt,
+                    fill=cat_fill,
+                    CRITICAL=crit_c,
+                    HIGH=high_c,
+                    MEDIUM=med_c,
+                    LOW=low_c,
                 )
             )
+            category_chart_data.append({
+                "name": cat_name,
+                "value": cnt,
+                "count": cnt,
+                "fill": cat_fill,
+                "category": cat,
+                "CRITICAL": crit_c,
+                "HIGH": high_c,
+                "MEDIUM": med_c,
+                "LOW": low_c,
+            })
+
         recharts_category_bar.sort(key=lambda x: x.count, reverse=True)
+        category_chart_data.sort(key=lambda x: x["count"], reverse=True)
 
         # 2. LineChart: Review trends
         recharts_review_trends_line: list[RechartsReviewTrendLine] = []
+        review_trend_series: list[dict[str, Any]] = []
         for d_str, stats in sorted(review_trends_by_date.items()):
+            tot = stats.get("TOTAL", 0)
+            appr = stats.get("APPROVED", 0)
+            cr = stats.get("CHANGES_REQUESTED", 0)
             recharts_review_trends_line.append(
                 RechartsReviewTrendLine(
                     date=d_str,
-                    approved=stats.get("APPROVED", 0),
-                    changes_requested=stats.get("CHANGES_REQUESTED", 0),
-                    total_reviews=stats.get("TOTAL", 0),
+                    name=d_str,
+                    value=tot,
+                    count=tot,
+                    approved=appr,
+                    changes_requested=cr,
+                    total_reviews=tot,
+                    fill="#6366F1",
                 )
             )
+            review_trend_series.append({
+                "name": d_str,
+                "date": d_str,
+                "value": tot,
+                "count": tot,
+                "approved": appr,
+                "changes_requested": cr,
+                "total_reviews": tot,
+                "fill": "#6366F1",
+            })
 
         # 3. PieChart: Triage confidence buckets
         total_for_pie = total_findings if total_findings > 0 else 1
@@ -255,28 +307,127 @@ class GovernanceReportService:
         med_val = confidence_bucket_counts["MEDIUM"] or triage_status_counts.get("ROUTED_TO_HUMAN_LOW_CONFIDENCE", 0)
         low_val = confidence_bucket_counts["LOW"] or max(0, total_findings - high_val - med_val)
 
+        high_pct = round((high_val / total_for_pie) * 100.0, 2) if total_findings > 0 else 0.0
+        med_pct = round((med_val / total_for_pie) * 100.0, 2) if total_findings > 0 else 0.0
+        low_pct = round((low_val / total_for_pie) * 100.0, 2) if total_findings > 0 else 0.0
+
         recharts_triage_pie: list[RechartsTriagePie] = [
             RechartsTriagePie(
                 name="High Confidence (>=0.85)",
                 value=high_val,
+                count=high_val,
                 fill="#10B981",
                 key="HIGH",
-                percentage=round((high_val / total_for_pie) * 100.0, 2) if total_findings > 0 else 0.0,
+                percentage=high_pct,
             ),
             RechartsTriagePie(
                 name="Medium Confidence (0.60-0.84)",
                 value=med_val,
+                count=med_val,
                 fill="#F59E0B",
                 key="MEDIUM",
-                percentage=round((med_val / total_for_pie) * 100.0, 2) if total_findings > 0 else 0.0,
+                percentage=med_pct,
             ),
             RechartsTriagePie(
                 name="Low Confidence (<0.60)",
                 value=low_val,
+                count=low_val,
                 fill="#EF4444",
                 key="LOW",
-                percentage=round((low_val / total_for_pie) * 100.0, 2) if total_findings > 0 else 0.0,
+                percentage=low_pct,
             ),
+        ]
+
+        triage_pie_data: list[dict[str, Any]] = [
+            {
+                "name": "High Confidence (>=0.85)",
+                "value": high_val,
+                "count": high_val,
+                "fill": "#10B981",
+                "key": "HIGH",
+                "percentage": high_pct,
+            },
+            {
+                "name": "Medium Confidence (0.60-0.84)",
+                "value": med_val,
+                "count": med_val,
+                "fill": "#F59E0B",
+                "key": "MEDIUM",
+                "percentage": med_pct,
+            },
+            {
+                "name": "Low Confidence (<0.60)",
+                "value": low_val,
+                "count": low_val,
+                "fill": "#EF4444",
+                "key": "LOW",
+                "percentage": low_pct,
+            },
+        ]
+
+        # 4. Severity Distribution Breakdown
+        severity_breakdown: list[dict[str, Any]] = [
+            {
+                "name": "Critical",
+                "value": severity_counts.get("CRITICAL", 0),
+                "count": severity_counts.get("CRITICAL", 0),
+                "fill": "#EF4444",
+                "severity": "CRITICAL",
+            },
+            {
+                "name": "High",
+                "value": severity_counts.get("HIGH", 0),
+                "count": severity_counts.get("HIGH", 0),
+                "fill": "#F97316",
+                "severity": "HIGH",
+            },
+            {
+                "name": "Medium",
+                "value": severity_counts.get("MEDIUM", 0),
+                "count": severity_counts.get("MEDIUM", 0),
+                "fill": "#F59E0B",
+                "severity": "MEDIUM",
+            },
+            {
+                "name": "Low",
+                "value": severity_counts.get("LOW", 0),
+                "count": severity_counts.get("LOW", 0),
+                "fill": "#3B82F6",
+                "severity": "LOW",
+            },
+        ]
+
+        # 5. Executive Overview Summary KPIs
+        clean_rate_str = f"{round((high_val / total_for_pie) * 100, 1)}%" if total_findings > 0 else "100%"
+        summary_kpis: list[dict[str, Any]] = [
+            {
+                "name": "Total Violations Flagged",
+                "value": total_findings,
+                "count": total_findings,
+                "fill": "#3B82F6",
+                "description": "All compliance findings across evaluated revisions",
+            },
+            {
+                "name": "High Confidence Clean Rate",
+                "value": clean_rate_str,
+                "count": high_val,
+                "fill": "#10B981",
+                "description": "Findings meeting or exceeding calibrated >=0.85 confidence",
+            },
+            {
+                "name": "Critical Risks Mitigated",
+                "value": severity_counts.get("CRITICAL", 0),
+                "count": severity_counts.get("CRITICAL", 0),
+                "fill": "#EF4444",
+                "description": "Zero-tolerance brand, legal, and regulatory violations",
+            },
+            {
+                "name": "Stale Facts Flagged",
+                "value": category_counts.get("STALE_FACT", 0),
+                "count": category_counts.get("STALE_FACT", 0),
+                "fill": "#F59E0B",
+                "description": "Expired market claims detected via Temporal RAG",
+            },
         ]
 
         return GovernanceReportResponse(
@@ -289,6 +440,11 @@ class GovernanceReportService:
             detector_source_counts=detector_source_counts,
             creator_action_counts=creator_action_counts,
             category_severity_cube=category_severity_cube,
+            category_chart_data=category_chart_data,
+            triage_pie_data=triage_pie_data,
+            severity_breakdown=severity_breakdown,
+            review_trend_series=review_trend_series,
+            summary_kpis=summary_kpis,
             recharts_category_bar=recharts_category_bar,
             recharts_review_trends_line=recharts_review_trends_line,
             recharts_triage_pie=recharts_triage_pie,

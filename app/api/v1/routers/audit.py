@@ -1,19 +1,17 @@
 """
-BrandShield AI - Hash-Chained Audit Ledger Inspection & Cryptographic Verification.
+BrandShield AI - Hash-Chained Audit Ledger Inspection & Cryptographic Verification Router.
+Provides append-only SHA-256 audit log retrieval and cryptographic verification.
 """
 
 from typing import Annotated
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Query, status
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.dependencies import get_current_user, require_role
-from app.domain.enums import UserRole
+from app.api.v1.dependencies import AdminUser, ReviewerUser, SessionDep
 from app.domain.schemas.audit import AuditChainVerificationResult, AuditLedgerRead
-from app.infrastructure.db.models import AuditLedger, User
-from app.infrastructure.db.session import get_async_session
+from app.infrastructure.db.models import AuditLedger
 from app.services.audit_service import AuditService
 
 router = APIRouter()
@@ -21,8 +19,8 @@ router = APIRouter()
 
 @router.get("/logs", response_model=list[AuditLedgerRead])
 async def list_audit_logs(
-    current_user: Annotated[User, Depends(require_role([UserRole.ADMINISTRATOR, UserRole.REVIEWER]))],
-    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: ReviewerUser,
+    session: SessionDep,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> list[AuditLedger]:
@@ -40,8 +38,8 @@ async def list_audit_logs(
 
 @router.post("/verify-chain", response_model=AuditChainVerificationResult)
 async def verify_audit_chain_integrity(
-    current_user: Annotated[User, Depends(require_role([UserRole.ADMINISTRATOR]))],
-    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: AdminUser,
+    session: SessionDep,
 ) -> AuditChainVerificationResult:
     """
     Executes end-to-end cryptographic SHA-256 verification of the audit chain,

@@ -233,15 +233,25 @@ class BrandAutomatonCache:
             )
 
         pref_map = brand_profile.preferred_terminology_map if isinstance(getattr(brand_profile, "preferred_terminology_map", None), dict) else {}
-        for deprecated, approved in pref_map.items():
+        for deprecated, approved_val in pref_map.items():
+            if isinstance(approved_val, dict):
+                approved_term = str(approved_val.get("approved_term") or approved_val.get("term") or deprecated)
+                pref_reason = approved_val.get("reason") or f"Deprecated term '{deprecated}'. Corporate standard is '{approved_term}'."
+                sev_str = approved_val.get("severity", "MEDIUM")
+                pref_severity = SeverityLevel(sev_str) if sev_str in SeverityLevel._value2member_map_ else SeverityLevel.MEDIUM
+            else:
+                approved_term = str(approved_val)
+                pref_reason = f"Deprecated term '{deprecated}'. Corporate standard is '{approved_term}'."
+                pref_severity = SeverityLevel.MEDIUM
+
             ci_automaton.add_pattern(
                 pattern=deprecated,
                 payload=PatternPayload(
                     term=deprecated,
-                    suggested_correction=approved,
-                    reason=f"Deprecated term '{deprecated}'. Corporate standard is '{approved}'.",
+                    suggested_correction=approved_term,
+                    reason=pref_reason,
                     category=FindingCategory.TERMINOLOGY,
-                    severity=SeverityLevel.MEDIUM,
+                    severity=pref_severity,
                     match_type="PREFERRED",
                 ),
             )
@@ -255,12 +265,13 @@ class BrandAutomatonCache:
         trademarks = raw_trademarks if isinstance(raw_trademarks, dict) else {}
 
         for product_name, required_symbol_form in trademarks.items():
+            symbol_str = str(required_symbol_form.get("symbol_form") if isinstance(required_symbol_form, dict) else required_symbol_form)
             cs_automaton.add_pattern(
                 pattern=product_name,
                 payload=PatternPayload(
                     term=product_name,
-                    suggested_correction=required_symbol_form,
-                    reason=f"Trademark compliance requires legal symbol for '{product_name}'. Use '{required_symbol_form}'.",
+                    suggested_correction=symbol_str,
+                    reason=f"Trademark compliance requires legal symbol for '{product_name}'. Use '{symbol_str}'.",
                     category=FindingCategory.TERMINOLOGY,
                     severity=SeverityLevel.HIGH,
                     match_type="TRADEMARK",

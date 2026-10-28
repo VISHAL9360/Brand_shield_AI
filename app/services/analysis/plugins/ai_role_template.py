@@ -106,64 +106,93 @@ class TeammateAIAnalyzerPlugin(BaseAIAnalyzerPlugin):
             for m in pattern.finditer(text):
                 findings.append(
                     PluginToneFinding(
-                        category="TERMINOLOGY",
-                        severity="CRITICAL" if "risk-free" in term.lower() or "guarantee" in term.lower() else "HIGH",
-                        confidence=0.98,
+                        issue_category="TERMINOLOGY",
+                        severity="CRITICAL" if ("risk-free" in term.lower() or "guarantee" in term.lower()) else "HIGH",
+                        confidence_score=0.98,
                         start_offset=m.start(),
                         end_offset=m.end(),
-                        excerpt=m.group(0),
-                        explanation=f"Term '{m.group(0)}' breaches approved brand matrix.",
-                        suggested_rewrite=None,
-                        metadata={"rule_id": "CUSTOM_PROMPT_CHAIN"},
+                        flagged_text=m.group(0),
+                        explanation_reason=f"Term '{m.group(0)}' breaches approved brand matrix.",
+                        suggested_correction=None,
+                        rule_reference="CUSTOM_PROMPT_CHAIN",
                     )
                 )
 
-        # 2. Executive Formality Scoring
-        words = text.split()
-        avg_word_len = sum(len(w) for w in words) / max(len(words), 1)
-        formality_score = min(10.0, max(1.0, (avg_word_len * 1.5)))
+        # 2. Executive Tone / Slang Detection
+        slang_patterns = [
+            (r"\b(?:crazy\s+excited|insane|mind[- ]blowing)\b", "Colloquial hyperbole departs from executive enterprise standards.", "delighted"),
+            (r"\b(?:guaranteed\s+profit|100%\s+risk[- ]free)\b", "Absolute guarantee violates compliance disclosure obligations.", "structured for managed risk"),
+        ]
+        for pattern_str, explanation, replacement in slang_patterns:
+            p = re.compile(pattern_str, re.IGNORECASE)
+            for m in p.finditer(text):
+                findings.append(
+                    PluginToneFinding(
+                        issue_category="TONE",
+                        severity="MEDIUM",
+                        confidence_score=0.92,
+                        start_offset=m.start(),
+                        end_offset=m.end(),
+                        flagged_text=m.group(0),
+                        explanation_reason=explanation,
+                        suggested_correction=replacement,
+                        rule_reference="TEAMMATE_TONE_RULE",
+                    )
+                )
 
         elapsed_ms = (time.perf_counter() - t0) * 1000
         return PluginToneAnalysisResult(
             findings=findings,
-            formality_score=round(formality_score, 2),
-            sentiment_score=0.75,
-            processing_duration_ms=round(elapsed_ms, 2),
-            plugin_identifier=f"{self.plugin_name}:{self.plugin_version}",
+            model_name=self.plugin_name,
+            prompt_tokens_used=len(text.split()) + 40,
+            completion_tokens_used=len(findings) * 20,
+            latency_ms=round(elapsed_ms, 2),
+            summary_notes="Analysis completed via Teammate AI Analyzer Plugin.",
         )
 
-    async def verify_claim(self, context: PluginClaimContext) -> PluginClaimFinding:
+    async def verify_claims(self, context: PluginClaimContext) -> list[PluginClaimFinding]:
         """
-        Verifies individual factual claims against candidate evidence facts.
+        Verifies extracted factual assertions against approved facts catalog.
         """
-        claim_lower = context.claim_text.lower()
-        has_approved_match = False
-        matching_fact = None
+        results: list[PluginClaimFinding] = []
 
-        for fact in context.candidate_facts:
-            stmt = fact.get("statement", "").lower()
-            # Simple token overlap or cosine similarity
-            if any(token in stmt for token in claim_lower.split() if len(token) > 4):
-                has_approved_match = True
-                matching_fact = fact
-                break
+        for claim in context.claims_to_verify:
+            claim_lower = claim.lower()
+            matching_fact = None
 
-        if has_approved_match and matching_fact:
-            return PluginClaimFinding(
-                claim_text=context.claim_text,
-                is_substantiated=True,
-                confidence=0.94,
-                grounding_evidence_id=matching_fact.get("id"),
-                reason="Claim is directly corroborated by approved corporate repository.",
-            )
+            for fact in context.approved_facts:
+                stmt = fact.get("statement", "").lower()
+                # Check for significant token overlap (>50% of claim words)
+                claim_tokens = {tok for tok in claim_lower.split() if len(tok) > 3}
+                stmt_tokens = {tok for tok in stmt.split() if len(tok) > 3}
+                if claim_tokens and len(claim_tokens & stmt_tokens) / len(claim_tokens) >= 0.5:
+                    matching_fact = fact
+                    break
 
-        return PluginClaimFinding(
-            claim_text=context.claim_text,
-            is_substantiated=False,
-            confidence=0.70,
-            grounding_evidence_id=None,
-            reason="Needs verification: Claim has no matching citation in approved corporate facts.",
-        )
+            if matching_fact:
+                results.append(
+                    PluginClaimFinding(
+                        claim_text=claim,
+                        verification_status="VERIFIED",
+                        confidence=0.95,
+                        supporting_fact_id=matching_fact.get("id"),
+                        citation_snippet=matching_fact.get("statement"),
+                        explanation="Claim corroborated by approved enterprise corporate repository.",
+                    )
+                )
+            else:
+                results.append(
+                    PluginClaimFinding(
+                        claim_text=claim,
+                        verification_status="NEEDS_VERIFICATION",
+                        confidence=0.60,
+                        supporting_fact_id=None,
+                        citation_snippet=None,
+                        explanation="Needs verification: Claim has no matching citation in approved corporate facts.",
+                    )
+                )
+
+        return results
 
 
 # ==============================================================================
@@ -185,32 +214,51 @@ class TeammateVectorRetrieverPlugin(BaseVectorRetrieverPlugin):
     def retriever_name(self) -> str:
         return "teammate-hybrid-rrf-retriever"
 
-    async def rank_candidates(self, query: PluginRetrievalQuery) -> list[PluginRetrievedDocument]:
+    async def embed_query(self, text: str) -> list[float]:
+        """Deterministic 8-dimensional mock embedding for demonstration."""
+        val = sum(ord(c) for c in text)
+        return [math.cos(val + i) for i in range(8)]
+
+    async def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return [await self.embed_query(t) for t in texts]
+
+    async def retrieve_relevant_guidelines(
+        self,
+        query: PluginRetrievalQuery,
+        corpus: list[PluginRetrievedDocument],
+    ) -> list[PluginRetrievedDocument]:
         """
         Calculates hybrid score = (alpha * dense_cosine) + (beta * sparse_bm25).
         """
         ranked: list[PluginRetrievedDocument] = []
         q_tokens = set(re.findall(r"\w+", query.query_text.lower()))
 
-        for doc in query.candidate_pool:
-            doc_tokens = set(re.findall(r"\w+", doc.text.lower()))
+        for doc in corpus:
+            doc_tokens = set(re.findall(r"\w+", doc.content.lower()))
             overlap = len(q_tokens & doc_tokens) / max(len(q_tokens), 1)
 
-            # Simulated dense cosine similarity
             dense_sim = 0.85 if overlap > 0.3 else 0.40
             fused_score = (self.dense_weight * dense_sim) + (self.sparse_weight * overlap)
 
-            ranked.append(
-                PluginRetrievedDocument(
-                    id=doc.id,
-                    text=doc.text,
-                    score=round(fused_score, 4),
-                    metadata={**doc.metadata, "hybrid_algorithm": "tuned_rrf_linear_blend"},
+            if fused_score >= query.similarity_threshold:
+                ranked.append(
+                    PluginRetrievedDocument(
+                        document_id=doc.document_id,
+                        content=doc.content,
+                        score=round(fused_score, 4),
+                        metadata={**doc.metadata, "hybrid_algorithm": "tuned_rrf_linear_blend"},
+                    )
                 )
-            )
 
         ranked.sort(key=lambda x: x.score, reverse=True)
         return ranked[:query.top_k]
+
+    async def retrieve_relevant_facts(
+        self,
+        query: PluginRetrievalQuery,
+        corpus: list[PluginRetrievedDocument],
+    ) -> list[PluginRetrievedDocument]:
+        return await self.retrieve_relevant_guidelines(query, corpus)
 
 
 # ==============================================================================
@@ -238,10 +286,10 @@ EXPANDED_BENCHMARK_SAMPLES = [
 # ==============================================================================
 
 def register_teammate_ai_plugins() -> None:
-    """Registers your custom AI plugin components into the BrandShield AI engine."""
+    """Registers custom AI plugin components into the BrandShield AI engine."""
     AIPluginRegistry.register_analyzer(TeammateAIAnalyzerPlugin())
     AIPluginRegistry.register_retriever(TeammateVectorRetrieverPlugin())
 
 
-# Auto-register on import
+# Auto-register on module load
 register_teammate_ai_plugins()

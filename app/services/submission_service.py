@@ -15,7 +15,8 @@ from sqlalchemy.orm import selectinload
 
 from app.domain.enums import AuditAction, ReviewSignOff, WorkflowState
 from app.domain.schemas.submission import ReviewDecisionCreate, SubmissionCreate
-from app.infrastructure.db.models import DocumentRevision, ReviewDecision, Submission
+from app.infrastructure.db.models import BrandProfile, DocumentRevision, ReviewDecision, Submission
+from app.core.crypto_storage import CryptoStorageEngine
 from app.services.audit_service import AuditService
 
 
@@ -52,6 +53,13 @@ class SubmissionService:
         Creates a root submission and its initial Genesis revision (v1).
         """
         content_hash = cls.calculate_sha256(payload.initial_content)
+        brand_profile = await session.get(BrandProfile, payload.brand_profile_id)
+        should_protect = CryptoStorageEngine.should_protect(brand_profile)
+        stored_content = (
+            CryptoStorageEngine.encrypt_content(payload.initial_content)
+            if should_protect
+            else payload.initial_content
+        )
 
         submission = Submission(
             workspace_id=payload.workspace_id,
@@ -68,7 +76,7 @@ class SubmissionService:
             submission_id=submission.id,
             revision_number=1,
             parent_revision_id=None,
-            content_text=payload.initial_content,
+            content_text=stored_content,
             ast_span_map=payload.ast_span_map,
             created_by_id=creator_id,
             sha256_content_hash=content_hash,
@@ -123,14 +131,23 @@ class SubmissionService:
         if not parent_rev:
             raise ValueError(f"Submission {submission_id} has no valid head revision.")
 
+        parent_plain = CryptoStorageEngine.decrypt_content(parent_rev.content_text)
         new_hash = cls.calculate_sha256(new_content)
-        diff_summary = cls.compute_diff(parent_rev.content_text, new_content)
+        diff_summary = cls.compute_diff(parent_plain, new_content)
+
+        brand_profile = await session.get(BrandProfile, submission.brand_profile_id)
+        should_protect = CryptoStorageEngine.should_protect(brand_profile)
+        stored_content = (
+            CryptoStorageEngine.encrypt_content(new_content)
+            if should_protect
+            else new_content
+        )
 
         new_revision = DocumentRevision(
             submission_id=submission.id,
             revision_number=parent_rev.revision_number + 1,
             parent_revision_id=parent_rev.id,
-            content_text=new_content,
+            content_text=stored_content,
             ast_span_map=ast_span_map,
             created_by_id=creator_id,
             sha256_content_hash=new_hash,
@@ -207,4 +224,13 @@ class SubmissionService:
                 "comments": payload.comments,
             },
         )
+
+        if payload.decision == ReviewSignOff.APPROVED:
+            from app.services.workflow.attestation_service import PublicationAttestationService
+            await PublicationAttestationService.mint_certificate(
+                session=session,
+                submission=submission,
+                reviewer_id=reviewer_id,
+            )
+
         return decision

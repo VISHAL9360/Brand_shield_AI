@@ -5,7 +5,7 @@ BrandShield AI - Pydantic v2 Domain Schemas for Submissions, Revisions, and Revi
 import uuid
 from datetime import datetime
 from typing import Any, Optional
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
 from app.domain.enums import CreatorAction, ReviewSignOff, WorkflowState
 
@@ -107,15 +107,28 @@ class FindingResolutionRequest(BaseModel):
             mapping = {
                 "ACCEPT": CreatorAction.ACCEPTED,
                 "ACCEPTED": CreatorAction.ACCEPTED,
+                "ACCEPT_SUGGESTION": CreatorAction.ACCEPTED,
                 "REJECT": CreatorAction.REJECTED,
                 "REJECTED": CreatorAction.REJECTED,
+                "REJECT_WITH_RATIONALE": CreatorAction.REJECTED,
                 "EDIT": CreatorAction.EDITED,
                 "EDITED": CreatorAction.EDITED,
+                "CUSTOM_EDIT": CreatorAction.EDITED,
             }
             v_upper = v.upper()
             if v_upper in mapping:
                 return mapping[v_upper]
         return v
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "custom_replacement" in data and not data.get("edited_text"):
+                data["edited_text"] = data["custom_replacement"]
+            if "rationale" in data and not data.get("comment"):
+                data["comment"] = data["rationale"]
+        return data
 
 
 class FindingResolutionResponse(BaseModel):
@@ -174,6 +187,8 @@ class TokenDiffChunk(BaseModel):
 
 class RevisionDiffResponse(BaseModel):
     """Complete revision lineage and exact side-by-side token and unified diffs."""
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
     submission_id: uuid.UUID
     from_revision: int
     to_revision: int
@@ -184,4 +199,19 @@ class RevisionDiffResponse(BaseModel):
     token_diff: list[TokenDiffChunk]
     lines_added: int
     lines_removed: int
+
+    @computed_field
+    @property
+    def token_diffs(self) -> list[TokenDiffChunk]:
+        return self.token_diff
+
+    @computed_field
+    @property
+    def total_additions(self) -> int:
+        return self.lines_added
+
+    @computed_field
+    @property
+    def total_deletions(self) -> int:
+        return self.lines_removed
 

@@ -5,7 +5,7 @@ and evaluation test set benchmarks.
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 import uuid
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -22,6 +22,8 @@ class RechartsCategoryBar(BaseModel):
     category: str = Field(..., description="Finding category identifier")
     name: str = Field(..., description="Human-readable category label")
     count: int = Field(..., ge=0, description="Total occurrences")
+    value: int = Field(default=0, ge=0, description="Alias for count for Recharts direct binding")
+    fill: str = Field(default="#8B5CF6", description="Category bar fill color")
     CRITICAL: int = Field(default=0, ge=0, description="Critical findings count")
     HIGH: int = Field(default=0, ge=0, description="High severity count")
     MEDIUM: int = Field(default=0, ge=0, description="Medium severity count")
@@ -31,18 +33,41 @@ class RechartsCategoryBar(BaseModel):
 class RechartsReviewTrendLine(BaseModel):
     """Pre-formatted time-series row for Recharts <LineChart> review trends."""
     date: str = Field(..., description="Date (YYYY-MM-DD)")
+    name: str = Field(default="", description="Axis label alias for date")
+    value: int = Field(default=0, ge=0, description="Total reviews count for Recharts")
+    count: int = Field(default=0, ge=0, description="Total reviews count")
     approved: int = Field(default=0, ge=0, description="Approved sign-offs count")
     changes_requested: int = Field(default=0, ge=0, description="Changes requested count")
     total_reviews: int = Field(default=0, ge=0, description="Total review actions count")
+    fill: str = Field(default="#6366F1", description="Trendline color")
 
 
 class RechartsTriagePie(BaseModel):
     """Pre-formatted slice for Recharts <PieChart> displaying confidence triage distribution."""
     name: str = Field(..., description="Bucket or status label")
     value: int = Field(..., ge=0, description="Finding count in this bucket")
+    count: int = Field(default=0, ge=0, description="Count alias")
     fill: str = Field(..., description="Hex color code for slice fill")
     key: Optional[str] = Field(None, description="Machine-readable tier key")
     percentage: float = Field(default=0.0, ge=0.0, le=100.0, description="Percentage of total findings")
+
+
+class RechartsSeverityBar(BaseModel):
+    """Pre-formatted row for Recharts severity breakdown."""
+    name: str = Field(..., description="Severity tier label")
+    value: int = Field(..., ge=0, description="Occurrences")
+    count: int = Field(..., ge=0, description="Occurrences")
+    fill: str = Field(..., description="Hex color code")
+    severity: str = Field(..., description="Machine severity level")
+
+
+class RechartsSummaryKPI(BaseModel):
+    """Pre-formatted KPI card for Recharts overview dashboard."""
+    name: str = Field(..., description="KPI title")
+    value: Any = Field(..., description="Formatted string or numeric value")
+    count: int = Field(default=0, ge=0, description="Underlying integer metric")
+    fill: str = Field(default="#3B82F6", description="Accent hex color code")
+    description: Optional[str] = Field(None, description="Exploratory tooltip or explanation")
 
 
 class GovernanceReportResponse(BaseModel):
@@ -62,6 +87,23 @@ class GovernanceReportResponse(BaseModel):
     category_severity_cube: list[CategorySeverityCount] = Field(
         default_factory=list, description="Dimensional breakdown from GROUP BY CUBE"
     )
+    # Zero-transformation Recharts arrays with { name, value, count, fill }
+    category_chart_data: list[dict[str, Any]] = Field(
+        default_factory=list, description="Recharts <BarChart> dataset with { name, value, count, fill }"
+    )
+    triage_pie_data: list[dict[str, Any]] = Field(
+        default_factory=list, description="Recharts <PieChart> dataset with { name, value, count, fill }"
+    )
+    severity_breakdown: list[dict[str, Any]] = Field(
+        default_factory=list, description="Recharts severity distribution with { name, value, count, fill }"
+    )
+    review_trend_series: list[dict[str, Any]] = Field(
+        default_factory=list, description="Recharts <LineChart> dataset with { name, value, count, fill }"
+    )
+    summary_kpis: list[dict[str, Any]] = Field(
+        default_factory=list, description="Pre-calculated dashboard summary KPI cards with { name, value, count, fill }"
+    )
+    # Backward compatibility bindings
     recharts_category_bar: list[RechartsCategoryBar] = Field(
         default_factory=list, description="Recharts <BarChart> dataset for recurring issue categories"
     )

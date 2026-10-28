@@ -21,6 +21,8 @@ class FindingBase(BaseModel):
     suggested_correction: Optional[str] = None
     detector_source: DetectorSource
     is_automation_bias_audit: bool = False
+    epistemic_uncertainty_score: Optional[float] = None
+    counterfactual_risk_summary: Optional[str] = None
 
 
 class FindingCreate(FindingBase):

@@ -11,18 +11,20 @@ Exposes multipart file upload and raw text ingestion endpoints:
 
 from datetime import datetime, timezone
 import hashlib
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.crypto_storage import CryptoStorageEngine
 from app.core.exceptions import ConflictProblem, NotFoundProblem, ValidationErrorProblem
 from app.core.security import RequireRole, get_current_user
 from app.domain.enums import AuditAction, UserRole, WorkflowState
+from app.domain.schemas.finding import FindingRead
 from app.domain.schemas.submission import (
     DocumentRevisionCreate,
     DocumentRevisionRead,
@@ -150,18 +152,240 @@ async def upload_document_asset(
     )
 
 
+async def _resolve_default_brand_profile(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    brand_profile_id: Optional[uuid.UUID] = None,
+) -> BrandProfile:
+    """Resolves target brand profile or falls back to primary active profile in workspace."""
+    if brand_profile_id:
+        profile = await session.get(BrandProfile, brand_profile_id)
+        if profile and profile.workspace_id == workspace_id:
+            return profile
+        if profile:
+            return profile
+
+    q = (
+        select(BrandProfile)
+        .where(BrandProfile.workspace_id == workspace_id, BrandProfile.is_active == True)
+        .order_by(BrandProfile.created_at.asc())
+        .limit(1)
+    )
+    res = await session.execute(q)
+    profile = res.scalars().first()
+    if not profile:
+        q2 = (
+            select(BrandProfile)
+            .where(BrandProfile.is_active == True)
+            .order_by(BrandProfile.created_at.asc())
+            .limit(1)
+        )
+        res2 = await session.execute(q2)
+        profile = res2.scalars().first()
+
+    if not profile:
+        raise NotFoundProblem(
+            detail="No active Brand Profile found in workspace.",
+            resource_type="BrandProfile",
+        )
+    return profile
+
+
+async def _ingest_submission_input(
+    request: Request,
+    creator: User,
+    session: AsyncSession,
+) -> tuple[BrandProfile, str, str, ParsedDocument, Optional[str]]:
+    """
+    Parses both application/json and multipart/form-data requests without 422 errors.
+    Returns (profile, title, document_type, parsed_doc, source_filename).
+    """
+    content_type = request.headers.get("content-type", "")
+
+    raw_title: Optional[str] = None
+    target_profile_id: Optional[uuid.UUID] = None
+    content_text: Optional[str] = None
+    doc_type: str = "TEXT"
+    source_filename: Optional[str] = None
+    parsed: Optional[ParsedDocument] = None
+
+    if "multipart/form-data" in content_type:
+        form = await request.form()
+        uploaded_file: Optional[Any] = form.get("file")
+        raw_title = form.get("title")  # type: ignore
+        raw_bp = form.get("brand_profile_id")
+        content_text = form.get("content_text") or form.get("content")  # type: ignore
+
+        if raw_bp:
+            try:
+                target_profile_id = uuid.UUID(str(raw_bp))
+            except ValueError:
+                target_profile_id = None
+
+        if uploaded_file and hasattr(uploaded_file, "filename") and uploaded_file.filename:
+            file_bytes, validated = await UploadValidator.validate_upload_stream(uploaded_file)
+            doc_type = validated.document_type
+            source_filename = validated.clean_filename
+            if not raw_title:
+                raw_title = source_filename
+
+            if doc_type == "PDF":
+                parsed = await parse_pdf_async(file_bytes)
+            elif doc_type == "DOCX":
+                parsed = await parse_docx_async(file_bytes)
+            elif doc_type in ("TEXT", "MARKDOWN"):
+                parsed = await parse_text_async(
+                    raw_input=file_bytes.decode("utf-8", errors="replace"),
+                    document_type=doc_type,
+                )
+            else:
+                raise ValidationErrorProblem(detail=f"Unsupported document type: {doc_type}")
+        elif content_text:
+            raw_doc_type = form.get("document_type", "TEXT")
+            doc_type = str(raw_doc_type).upper()
+            if doc_type not in ("TEXT", "MARKDOWN"):
+                doc_type = "TEXT"
+            parsed = OffsetPreservingASTParser.parse_text(
+                raw_input=str(content_text),
+                document_type=doc_type,
+            )
+        else:
+            raise ValidationErrorProblem(detail="Neither 'file' upload nor 'content_text' provided.")
+
+    else:
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        raw_title = body.get("title")
+        raw_bp = body.get("brand_profile_id")
+        if raw_bp:
+            try:
+                target_profile_id = uuid.UUID(str(raw_bp))
+            except ValueError:
+                target_profile_id = None
+
+        content_text = body.get("content_text") or body.get("content") or body.get("initial_content") or ""
+        doc_type = str(body.get("document_type", "TEXT")).upper()
+        if doc_type not in ("TEXT", "MARKDOWN"):
+            doc_type = "TEXT"
+
+        parsed = OffsetPreservingASTParser.parse_text(
+            raw_input=content_text,
+            document_type=doc_type,
+        )
+
+    # Fallback title if missing
+    if not raw_title or not str(raw_title).strip():
+        snippet = (parsed.raw_text[:30].strip() or "Untitled Document").replace("\n", " ")
+        raw_title = f"Document: {snippet}"
+
+    # Resolve Brand Profile
+    profile = await _resolve_default_brand_profile(
+        session=session,
+        workspace_id=creator.workspace_id,
+        brand_profile_id=target_profile_id,
+    )
+
+    return profile, str(raw_title), doc_type, parsed, source_filename
+
+
+@router.post("", response_model=SubmissionRead, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @router.post("/", response_model=SubmissionRead, status_code=status.HTTP_201_CREATED)
 async def create_raw_submission(
-    payload: SubmissionCreate,
+    request: Request,
     creator: AuthorizedCreator,
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> Submission:
-    """Creates a submission from structured payload establishes Genesis revision (v1)."""
-    return await SubmissionService.create_submission(
+    """
+    Zero-Friction Dual-Mode Submission Endpoint.
+    Cleanly supports BOTH:
+    1. application/json: {"title": "...", "content_text": "...", "brand_profile_id": "..."}
+    2. multipart/form-data: file upload (PDF/DOCX/TXT/MD) + optional form fields.
+    Defaulting to the seeded primary brand profile if brand_profile_id is omitted!
+    """
+    profile, title, doc_type, parsed, source_filename = await _ingest_submission_input(
+        request=request,
+        creator=creator,
         session=session,
-        payload=payload,
-        creator_id=creator.id,
     )
+
+    return await _create_submission_and_genesis_revision(
+        session=session,
+        creator=creator,
+        brand_profile_id=profile.id,
+        title=title,
+        document_type=doc_type,
+        parsed=parsed,
+        source_filename=source_filename,
+    )
+
+
+@router.post(
+    "/analyze-instant",
+    status_code=status.HTTP_200_OK,
+    summary="1-Step Submission Creation & Automated 4-Stage Intelligence Triage",
+)
+async def submit_and_analyze_instant(
+    request: Request,
+    creator: AuthorizedCreator,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> dict[str, Any]:
+    """
+    1-step convenience endpoint for the frontend that accepts text or a PDF/DOCX file,
+    creates the submission, runs the 4-stage analysis + epistemic triage,
+    and returns the submission + all findings + triage summary in a single HTTP call.
+    """
+    profile, title, doc_type, parsed, source_filename = await _ingest_submission_input(
+        request=request,
+        creator=creator,
+        session=session,
+    )
+
+    submission = await _create_submission_and_genesis_revision(
+        session=session,
+        creator=creator,
+        brand_profile_id=profile.id,
+        title=title,
+        document_type=doc_type,
+        parsed=parsed,
+        source_filename=source_filename,
+    )
+
+    submission_dict = SubmissionRead.model_validate(submission).model_dump(mode="json")
+    current_rev_id = submission.current_revision_id
+
+    pipeline_result = await TriageOrchestrator.run_pipeline(
+        session=session,
+        revision_id=current_rev_id,
+        brand_profile_id=profile.id,
+        workspace_id=creator.workspace_id,
+        content_text=parsed.raw_text,
+        preloaded_profile=profile,
+    )
+
+    finding_reads = [
+        FindingRead.model_validate(f).model_dump(mode="json")
+        for f in pipeline_result.findings
+    ]
+
+    triage_summary = {
+        "total_findings": pipeline_result.total_findings,
+        "flagged_high_confidence": pipeline_result.flagged_high_confidence,
+        "routed_to_human_low_confidence": pipeline_result.routed_to_human_low_confidence,
+        "stale_facts_to_reverify": pipeline_result.stale_facts_to_reverify,
+        "needs_verification_missing_evidence": pipeline_result.needs_verification_missing_evidence,
+        "automation_bias_audits_injected": pipeline_result.automation_bias_audits_injected,
+        "suppressed_false_positives_count": getattr(pipeline_result, "suppressed_false_positives_count", 0),
+        "processing_duration_ms": pipeline_result.processing_duration_ms,
+    }
+
+    return {
+        "submission": submission_dict,
+        "findings": finding_reads,
+        "triage_summary": triage_summary,
+    }
 
 
 async def _create_submission_and_genesis_revision(
@@ -182,6 +406,14 @@ async def _create_submission_and_genesis_revision(
     sub_id = uuid.uuid4()
     rev_id = uuid.uuid4()
 
+    profile = await session.get(BrandProfile, brand_profile_id)
+    should_protect = CryptoStorageEngine.should_protect(profile) if profile else False
+    stored_content = (
+        CryptoStorageEngine.encrypt_content(parsed.raw_text)
+        if should_protect
+        else parsed.raw_text
+    )
+
     submission = Submission(
         id=sub_id,
         workspace_id=creator.workspace_id,
@@ -201,7 +433,7 @@ async def _create_submission_and_genesis_revision(
         submission_id=submission.id,
         revision_number=1,
         parent_revision_id=None,
-        content_text=parsed.raw_text,
+        content_text=stored_content,
         ast_span_map=parsed.ast_span_map,
         created_by_id=creator.id,
         sha256_content_hash=sha256_hash,
@@ -239,6 +471,7 @@ async def _create_submission_and_genesis_revision(
     return submission
 
 
+@router.get("", response_model=list[SubmissionRead], include_in_schema=False)
 @router.get("/", response_model=list[SubmissionRead])
 async def list_workspace_submissions(
     current_user: AuthenticatedUser,

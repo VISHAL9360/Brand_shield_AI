@@ -70,27 +70,18 @@ app.add_middleware(TelemetryMiddleware)
 # Stripe-Style Idempotency Replay Middleware
 app.add_middleware(IdempotencyMiddleware)
 
-# Cross-Origin Resource Sharing (CORS) - Strict configuration for React + Tailwind CSS frontend
+# Cross-Origin Resource Sharing (CORS) - Bulletproof configuration for React + Tailwind CSS frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_origin_regex=settings.CORS_ALLOW_ORIGIN_REGEX,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
-    allow_headers=[
-        "Authorization",
-        "Content-Type",
-        "Accept",
-        "X-Correlation-ID",
-        "Idempotency-Key",
-        "Origin",
-        "X-Requested-With",
-        "Access-Control-Request-Method",
-        "Access-Control-Request-Headers",
-    ],
+    allow_methods=["*"],
+    allow_headers=["*"],
     expose_headers=[
         "X-Correlation-ID",
         "X-Process-Time-Ms",
+        "Idempotency-Key",
         "X-Cache-Idempotency",
         "Content-Range",
         "Link",

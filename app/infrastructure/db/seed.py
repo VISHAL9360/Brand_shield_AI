@@ -26,6 +26,7 @@ from app.domain.enums import (
     UserRole,
 )
 from app.infrastructure.db.models import (
+    ApprovedBrandAsset,
     ApprovedFact,
     BrandGuideline,
     BrandProfile,
@@ -72,9 +73,12 @@ async def seed_database(session: AsyncSession) -> dict[str, Any]:
         await session.flush()
 
     # ==========================================================================
-    # 2. Three RBAC Demo Users
+    # 2. Three RBAC Demo Users (@brandshield.ai and @acmefintech.com)
     # ==========================================================================
     user_definitions = [
+        ("creator@brandshield.ai", "Alex Creator", UserRole.CREATOR),
+        ("reviewer@brandshield.ai", "Morgan Reviewer", UserRole.REVIEWER),
+        ("admin@brandshield.ai", "Sam Admin", UserRole.ADMINISTRATOR),
         ("creator@acmefintech.com", "Alex Creator", UserRole.CREATOR),
         ("reviewer@acmefintech.com", "Morgan Reviewer", UserRole.REVIEWER),
         ("admin@acmefintech.com", "Sam Admin", UserRole.ADMINISTRATOR),
@@ -506,7 +510,117 @@ async def seed_database(session: AsyncSession) -> dict[str, Any]:
     await session.flush()
 
     # ==========================================================================
-    # 6. Pre-warmed Demo Fallback Cache
+    # 6. Four (4) Approved Brand Assets with Perceptual Hashes (pHash & dHash)
+    # ==========================================================================
+    asset_definitions = [
+        (
+            "Acme FinTech Primary Logo",
+            "LOGO",
+            "logo_primary_horizontal.png",
+            "a1b2c3d4e5f60718",  # dhash
+            "f0e1d2c3b4a59687",  # phash
+            3.5,                 # aspect_ratio
+            700,                 # width_px
+            200,                 # height_px
+            ["#0A2540", "#00D4FF", "#FFFFFF"],
+            "https://assets.acmefintech.com/brand/logo_primary.png",
+        ),
+        (
+            "Acme FinTech Monogram Icon",
+            "ICON",
+            "acme_icon_square.png",
+            "1122334455667788",
+            "8877665544332211",
+            1.0,
+            512,
+            512,
+            ["#0A2540", "#00D4FF"],
+            "https://assets.acmefintech.com/brand/icon_square.png",
+        ),
+        (
+            "Acme SOC2 Security Badge",
+            "BADGE",
+            "security_badge_soc2.png",
+            "ff00ee11dd22cc33",
+            "33cc22dd11ee00ff",
+            1.2,
+            360,
+            300,
+            ["#1E293B", "#10B981", "#FFFFFF"],
+            "https://assets.acmefintech.com/brand/badge_soc2.png",
+        ),
+        (
+            "Acme Enterprise Dark Banner",
+            "PRODUCT_GRAPHIC",
+            "banner_dark_hero.png",
+            "9988776655443322",
+            "2233445566778899",
+            2.67,
+            1920,
+            720,
+            ["#020617", "#0EA5E9", "#38BDF8"],
+            "https://assets.acmefintech.com/brand/banner_hero.png",
+        ),
+    ]
+
+    seeded_assets_count = 0
+    messaging_rules = dict(brand_profile.messaging_rules or {})
+    rules_assets = list(messaging_rules.get("approved_assets", []))
+    existing_asset_names = {a.get("name") for a in rules_assets}
+
+    for name, cat, fname, dhash, phash, aspect, w, h, palette, url in asset_definitions:
+        a_query = select(ApprovedBrandAsset).where(
+            ApprovedBrandAsset.workspace_id == workspace.id,
+            ApprovedBrandAsset.asset_name == name,
+        )
+        a_res = await session.execute(a_query)
+        asset_record = a_res.scalars().first()
+
+        if not asset_record:
+            asset_id = uuid.uuid4()
+            asset_record = ApprovedBrandAsset(
+                id=asset_id,
+                workspace_id=workspace.id,
+                brand_profile_id=brand_profile.id,
+                asset_name=name,
+                asset_category=cat,
+                phash=phash,
+                dhash=dhash,
+                color_palette=palette,
+                aspect_ratio=aspect,
+                file_url=url,
+                is_active=True,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(asset_record)
+            seeded_assets_count += 1
+
+        if name not in existing_asset_names:
+            rules_assets.append({
+                "id": str(asset_record.id),
+                "brand_profile_id": str(brand_profile.id),
+                "name": name,
+                "asset_type": cat,
+                "file_name": fname,
+                "dhash": dhash,
+                "phash": phash,
+                "aspect_ratio": aspect,
+                "width_px": w,
+                "height_px": h,
+                "is_deprecated": False,
+                "color_palette": palette,
+                "file_url": url,
+                "created_at": now.isoformat(),
+            })
+            existing_asset_names.add(name)
+
+    messaging_rules["approved_assets"] = rules_assets
+    brand_profile.messaging_rules = messaging_rules
+    await session.flush()
+
+    # ==========================================================================
+    # 7. Pre-warmed Demo Fallback Cache
     # ==========================================================================
     demo_phrases = [
         (
@@ -568,6 +682,8 @@ async def seed_database(session: AsyncSession) -> dict[str, Any]:
         "facts_count": len(fact_definitions),
         "newly_seeded_facts": seeded_facts_count,
         "expired_facts_count": 4,
+        "approved_assets_count": len(asset_definitions),
+        "newly_seeded_assets": seeded_assets_count,
         "prewarmed_cache_entries": DemoFallbackCache.get_cache_size(),
     }
 
